@@ -18,7 +18,7 @@ export async function chat(env: Env, message: string, _userId: string, userName:
 }
 
 function buildContext(_message: string, userName: string): string {
-	const context = staticAIContext + userName + ' sent this message.\n';
+	const context = staticAIContext + "In case it's relevant (it probably isn't), " + userName + ' sent this message. \n';
 	return context;
 }
 

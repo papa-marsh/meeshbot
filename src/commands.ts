@@ -2,7 +2,7 @@ import { Env } from '.';
 import { sendMessage } from './utils';
 
 export async function invalidCommand(env: Env): Promise<void> {
-	await sendMessage(env.BOT_ID, "That's not a command YOU FUCKING IDIOT");
+	await sendMessage(env.BOT_ID, "That's not a command IDIOT");
 }
 
 export async function ping(env: Env, _args: string[], _userId: string, _userName: string, _attachments: unknown[]): Promise<void> {
