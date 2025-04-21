@@ -1,8 +1,8 @@
-import { Env } from '.';
+import { Env, WebhookPayload } from '.';
 import * as commands from './commands';
 
 export const commandRegistry: {
-	[command: string]: (env: Env, args: string[], userId: string, userName: string, attachments: unknown[]) => Promise<void>;
+	[command: string]: (env: Env, args: string[], payload: WebhookPayload) => Promise<void>;
 } = {
 	ping: commands.ping,
 	whatissam: commands.whatissam,

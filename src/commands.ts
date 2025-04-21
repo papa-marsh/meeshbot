@@ -1,19 +1,15 @@
-import { Env } from '.';
+import { Env, WebhookPayload } from '.';
 import { sendMessage } from './utils';
 
-export async function invalidCommand(env: Env): Promise<void> {
-	await sendMessage(env.BOT_ID, "That's not a command IDIOT");
-}
-
-export async function ping(env: Env, _args: string[], _userId: string, _userName: string, _attachments: unknown[]): Promise<void> {
+export async function ping(env: Env, _args: string[], _payload: WebhookPayload): Promise<void> {
 	await sendMessage(env.BOT_ID, 'pong');
 }
 
-export async function whatissam(env: Env, _args: string[], _userId: string, _userName: string, _attachments: unknown[]): Promise<void> {
+export async function whatissam(env: Env, _args: string[], _payload: WebhookPayload): Promise<void> {
 	await sendMessage(env.BOT_ID, 'idk sounds like a bitch');
 }
 
-export async function roll(env: Env, args: string[], _userId: string, _userName: string, _attachments: unknown[]): Promise<void> {
+export async function roll(env: Env, args: string[], _payload: WebhookPayload): Promise<void> {
 	const rollPattern = /^(\d+)d(\d+)$/i;
 	const match = args[1].match(rollPattern);
 	if (!match) {
