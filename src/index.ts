@@ -1,6 +1,6 @@
 import { chat } from './chat';
 import { commandRegistry } from './registry';
-import { sendMessage } from './utils';
+import { respondInChat } from './utils';
 
 export interface Env {
 	DB: D1Database;
@@ -8,7 +8,7 @@ export interface Env {
 	OPENAI_API_KEY: string;
 }
 
-export interface WebhookPayload {
+export interface GroupMePayload {
 	id: string;
 	sender_type: string;
 	text: string;
@@ -25,7 +25,7 @@ export default {
 			return new Response('Method Not Allowed', { status: 405 });
 		}
 
-		let payload: WebhookPayload;
+		let payload: GroupMePayload;
 		try {
 			payload = await request.json();
 			console.log(payload);
@@ -47,7 +47,7 @@ export default {
 			if (commandHandler) {
 				await commandHandler(env, args, payload);
 			} else {
-				await sendMessage(env.BOT_ID, "That's not a command IDIOT");
+				await respondInChat(env, payload, "That's not a command IDIOT");
 			}
 		} else if (payload.text.toLowerCase().includes('@meeshbot')) {
 			await chat(env, payload.text, payload.user_id, payload.name);
@@ -57,7 +57,7 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-async function updateDB(env: Env, payload: WebhookPayload): Promise<void> {
+async function updateDB(env: Env, payload: GroupMePayload): Promise<void> {
 	try {
 		const isBot = payload.sender_type.toLowerCase() === 'bot';
 		await env.DB.prepare(

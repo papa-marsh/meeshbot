@@ -1,26 +1,26 @@
-import { Env, WebhookPayload } from '.';
-import { sendMessage } from './utils';
+import { Env, GroupMePayload } from '.';
+import { respondInChat } from './utils';
 
-export async function ping(env: Env, _args: string[], _payload: WebhookPayload): Promise<void> {
-	await sendMessage(env.BOT_ID, 'pong');
+export async function ping(env: Env, _args: string[], payload: GroupMePayload): Promise<void> {
+	await respondInChat(env, payload, 'pong');
 }
 
-export async function whatissam(env: Env, _args: string[], _payload: WebhookPayload): Promise<void> {
-	await sendMessage(env.BOT_ID, 'idk sounds like a bitch');
+export async function whatissam(env: Env, _args: string[], payload: GroupMePayload): Promise<void> {
+	await respondInChat(env, payload, 'idk sounds like a bitch');
 }
 
-export async function roll(env: Env, args: string[], _payload: WebhookPayload): Promise<void> {
+export async function roll(env: Env, args: string[], payload: GroupMePayload): Promise<void> {
 	const rollPattern = /^(\d+)d(\d+)$/i;
 	const match = args[1].match(rollPattern);
 	if (!match) {
-		await sendMessage(env.BOT_ID, "That's not a valid dice roll format dumb ass");
+		await respondInChat(env, payload, "That's not a valid dice roll format dumb ass");
 		return;
 	}
 
 	const numDice = parseInt(match[1], 10);
 	const numSides = parseInt(match[2], 10);
 	if (numDice <= 0 || numSides <= 0) {
-		await sendMessage(env.BOT_ID, 'Are you stupid? The numbers need to be greater than zero');
+		await respondInChat(env, payload, 'Are you stupid? The numbers need to be greater than zero');
 		return;
 	}
 
@@ -34,5 +34,5 @@ export async function roll(env: Env, args: string[], _payload: WebhookPayload): 
 
 	const resultMessage = `${numDice}d${numSides} rolled ${total} (${rolls.join(', ')})`;
 
-	await sendMessage(env.BOT_ID, resultMessage);
+	await respondInChat(env, payload, resultMessage);
 }
