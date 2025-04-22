@@ -1,10 +1,9 @@
-import { chat } from './chat';
+import { respondWithAi } from './chat';
 import { commandRegistry } from './registry';
 import { respondInChat } from './utils';
 
 export interface Env {
 	DB: D1Database;
-	BOT_ID: string;
 	OPENAI_API_KEY: string;
 }
 
@@ -33,7 +32,7 @@ export default {
 			return new Response('Bad Request: Invalid JSON', { status: 400 });
 		}
 
-		await updateDB(env, payload);
+		await syncEntities(env, payload);
 
 		if (payload.sender_type && payload.sender_type.toLowerCase() === 'bot') {
 			return new Response('Ignoring bot message', { status: 200 });
@@ -50,14 +49,14 @@ export default {
 				await respondInChat(env, payload, "That's not a command IDIOT");
 			}
 		} else if (payload.text.toLowerCase().includes('@meeshbot')) {
-			await chat(env, payload.text, payload.user_id, payload.name);
+			await respondWithAi(env, payload);
 		}
 
 		return new Response('Success', { status: 200 });
 	},
 } satisfies ExportedHandler<Env>;
 
-async function updateDB(env: Env, payload: GroupMePayload): Promise<void> {
+async function syncEntities(env: Env, payload: GroupMePayload): Promise<void> {
 	try {
 		const isBot = payload.sender_type.toLowerCase() === 'bot';
 		await env.DB.prepare(

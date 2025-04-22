@@ -1,24 +1,25 @@
-import { Env } from '.';
-import { sendMessage } from './utils';
+import { Env, GroupMePayload } from '.';
+import { respondInChat } from './utils';
 import { OpenAI } from 'openai';
 import { staticAIContext } from './secrets';
 
-const DEFAULT_MODEL = 'gpt-4o';
+const DEFAULT_MODEL = 'gpt-4.1-nano';
 
-export async function chat(env: Env, message: string, _userId: string, userName: string): Promise<void> {
+export async function respondWithAi(env: Env, payload: GroupMePayload): Promise<void> {
+	const message = payload.text;
 	let output: string;
-	const context = buildContext(env, message, userName);
+	const context = buildContext(env);
 	try {
 		const response = await getResponse(env, context, message, env.OPENAI_API_KEY, DEFAULT_MODEL);
 		output = response.output_text;
 	} catch {
-		output = 'Received an invalid response from our robot overlords :(';
+		output = 'Received an invalid response from the robot overlords :(';
 	}
-	await sendMessage(env, env.BOT_ID, output);
+	await respondInChat(env, payload, output);
 }
 
-function buildContext(_env: Env, _message: string, userName: string): string {
-	const context = staticAIContext + "In case it's relevant (it probably isn't), " + userName + ' sent this message. \n';
+function buildContext(_env: Env): string {
+	const context = staticAIContext;
 	return context;
 }
 
