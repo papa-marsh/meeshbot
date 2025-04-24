@@ -88,7 +88,8 @@ async function syncEntities(env: Env, payload: GroupMePayload): Promise<void> {
 
 		await env.DB.prepare(
 			`INSERT INTO membership (user_id, group_id) 
-				VALUES (?, ?);`,
+				VALUES (?, ?)
+				ON CONFLICT(user_id, group_id) DO NOTHING;`,
 		)
 			.bind(payload.user_id, payload.group_id)
 			.run();
