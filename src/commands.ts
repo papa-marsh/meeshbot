@@ -1,5 +1,6 @@
 import { Env, GroupMeMessage, syncMessageToDb } from '.';
 import { respondInChat } from './utils';
+import { adminUserIds, botUserIds } from './secrets';
 
 export async function ping(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
 	await respondInChat(env, message, 'pong');
@@ -48,26 +49,29 @@ type GroupMeAPIResponse = {
 };
 
 export async function sync(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
-	if (message.user_id !== '30766600') {
+	if (![...adminUserIds, ...botUserIds].includes(message.user_id)) {
 		await respondInChat(env, message, 'no');
 		return;
 	}
 
-	const groupId = args[1] ?? message.group_id;
+	if (!botUserIds.includes(message.user_id)) {
+		await respondInChat(env, message, 'Syncing messages...');
+	}
 
-	await respondInChat(env, message, 'Syncing messages...');
-	let total = 0;
+	const groupId = args[1] ?? message.group_id;
+	let beforeId = args[2] ?? null;
+	let total: number | string = parseInt(args[3] ?? 0);
 	let attempts = 0;
-	const maxAttempts = 3;
+	const maxAttempts = 5;
 
 	try {
-		let messages = await getMessages(env, groupId);
-		let beforeId = '';
+		let messages = await getMessages(env, groupId, beforeId ?? null);
 
 		while (messages.length) {
 			attempts += 1;
 			if (attempts > maxAttempts) {
-				throw new Error(`Exceeded max attempts (${maxAttempts})`);
+				await respondInChat(env, message, `/sync ${groupId} ${beforeId} ${total}`);
+				return;
 			}
 			for (const messageTemp of messages) {
 				await syncMessageToDb(env, messageTemp);
@@ -86,7 +90,7 @@ export async function sync(env: Env, args: string[], message: GroupMeMessage): P
 
 async function getMessages(env: Env, groupId: string, beforeId: string | null = null): Promise<GroupMeMessage[]> {
 	const baseUrl = 'https://api.groupme.com/v3';
-	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=100`;
+	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=50`;
 
 	if (beforeId !== null) {
 		url += `&before_id=${beforeId}`;
@@ -98,11 +102,10 @@ async function getMessages(env: Env, groupId: string, beforeId: string | null = 
 	}
 
 	if (response.status !== 200) {
-		throw new Error('Non-200 error receieved');
+		throw new Error(`Received ${response.status}`);
 	}
 
 	const json: GroupMeAPIResponse = await response.json();
-	console.log(`${json.response.count} messages found in group ${groupId}`);
 	const messages: GroupMeMessage[] | null = json.response.messages;
 
 	return messages;

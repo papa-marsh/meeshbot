@@ -29,16 +29,12 @@ export default {
 		let message: GroupMeMessage;
 		try {
 			message = await request.json();
-			console.log(message);
+			console.log(`${message.name.split(' ')[0]}: ${message.text}`, message);
 		} catch {
 			return new Response('Bad Request: Invalid JSON', { status: 400 });
 		}
 
 		await syncMessageToDb(env, message);
-
-		if (message.sender_type.toLowerCase() !== 'user') {
-			return new Response('Ignoring bot message', { status: 200 });
-		}
 
 		if (message.text.startsWith('/')) {
 			const args = message.text.trim().split(/\s+/);
