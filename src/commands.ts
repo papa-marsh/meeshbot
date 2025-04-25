@@ -1,26 +1,26 @@
-import { Env, GroupMePayload } from '.';
+import { Env, GroupMeMessage, syncMessageToDb } from '.';
 import { respondInChat } from './utils';
 
-export async function ping(env: Env, _args: string[], payload: GroupMePayload): Promise<void> {
-	await respondInChat(env, payload, 'pong');
+export async function ping(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
+	await respondInChat(env, message, 'pong');
 }
 
-export async function whatissam(env: Env, _args: string[], payload: GroupMePayload): Promise<void> {
-	await respondInChat(env, payload, 'idk sounds like a bitch');
+export async function whatissam(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
+	await respondInChat(env, message, 'idk sounds like a bitch');
 }
 
-export async function roll(env: Env, args: string[], payload: GroupMePayload): Promise<void> {
+export async function roll(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
 	const rollPattern = /^(\d+)d(\d+)$/i;
 	const match = args[1].match(rollPattern);
 	if (!match) {
-		await respondInChat(env, payload, "That's not a valid dice roll format dumb ass");
+		await respondInChat(env, message, "That's not a valid dice roll format dumb ass");
 		return;
 	}
 
 	const numDice = parseInt(match[1], 10);
 	const numSides = parseInt(match[2], 10);
 	if (numDice <= 0 || numSides <= 0) {
-		await respondInChat(env, payload, 'Are you stupid? The numbers need to be greater than zero');
+		await respondInChat(env, message, 'Are you stupid? The numbers need to be greater than zero');
 		return;
 	}
 
@@ -34,5 +34,76 @@ export async function roll(env: Env, args: string[], payload: GroupMePayload): P
 
 	const resultMessage = `${numDice}d${numSides} rolled ${total} (${rolls.join(', ')})`;
 
-	await respondInChat(env, payload, resultMessage);
+	await respondInChat(env, message, resultMessage);
+}
+
+type GroupMeAPIResponse = {
+	meta: {
+		code: number;
+	};
+	response: {
+		count: number;
+		messages: GroupMeMessage[];
+	};
+};
+
+export async function sync(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+	if (message.user_id !== '30766600') {
+		await respondInChat(env, message, 'no');
+		return;
+	}
+
+	const groupId = args[1] ?? message.group_id;
+
+	await respondInChat(env, message, 'Syncing messages...');
+	let total = 0;
+	let attempts = 0;
+	const maxAttempts = 3;
+
+	try {
+		let messages = await getMessages(env, groupId);
+		let beforeId = '';
+
+		while (messages.length) {
+			attempts += 1;
+			if (attempts > maxAttempts) {
+				throw new Error(`Exceeded max attempts (${maxAttempts})`);
+			}
+			for (const messageTemp of messages) {
+				await syncMessageToDb(env, messageTemp);
+				beforeId = messageTemp.id;
+				total += 1;
+			}
+			console.log(`wrote ${messages.length} messages (total: ${total})`);
+			messages = await getMessages(env, groupId, beforeId);
+		}
+		await respondInChat(env, message, `Success - Synced ${total} messages`);
+	} catch (err) {
+		console.log('Exception raised while syncing', err);
+		await respondInChat(env, message, `Something went wrong after ${total} messages :(`);
+	}
+}
+
+async function getMessages(env: Env, groupId: string, beforeId: string | null = null): Promise<GroupMeMessage[]> {
+	const baseUrl = 'https://api.groupme.com/v3';
+	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=100`;
+
+	if (beforeId !== null) {
+		url += `&before_id=${beforeId}`;
+	}
+
+	const response = await fetch(url);
+	if (response.status === 304) {
+		return [];
+	}
+
+	if (response.status !== 200) {
+		throw new Error('Non-200 error receieved');
+	}
+
+	const json: GroupMeAPIResponse = await response.json();
+	console.log(`${json.response.count} messages found in group ${groupId}`);
+	const messages: GroupMeMessage[] | null = json.response.messages;
+
+	return messages;
 }

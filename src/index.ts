@@ -5,10 +5,12 @@ import { respondInChat } from './utils';
 export interface Env {
 	DB: D1Database;
 	OPENAI_API_KEY: string;
+	GROUPME_TOKEN: string;
 }
 
-export interface GroupMePayload {
+export interface GroupMeMessage {
 	id: string;
+	created_at: number;
 	sender_type: string;
 	text: string;
 	user_id: string;
@@ -24,66 +26,48 @@ export default {
 			return new Response('Method Not Allowed', { status: 405 });
 		}
 
-		let payload: GroupMePayload;
+		let message: GroupMeMessage;
 		try {
-			payload = await request.json();
-			console.log(payload);
+			message = await request.json();
+			console.log(message);
 		} catch {
 			return new Response('Bad Request: Invalid JSON', { status: 400 });
 		}
 
-		await syncEntities(env, payload);
+		await syncMessageToDb(env, message);
 
-		if (payload.sender_type && payload.sender_type.toLowerCase() === 'bot') {
+		if (message.sender_type.toLowerCase() !== 'user') {
 			return new Response('Ignoring bot message', { status: 200 });
 		}
 
-		if (payload.text.startsWith('/')) {
-			const args = payload.text.trim().split(/\s+/);
+		if (message.text.startsWith('/')) {
+			const args = message.text.trim().split(/\s+/);
 			const command = args[0].slice(1).toLowerCase();
 
 			const commandHandler = commandRegistry[command];
 			if (commandHandler) {
-				await commandHandler(env, args, payload);
+				await commandHandler(env, args, message);
 			} else {
-				await respondInChat(env, payload, "That's not a command IDIOT");
+				await respondInChat(env, message, "That's not a command IDIOT");
 			}
-		} else if (payload.text.toLowerCase().includes('@meeshbot')) {
-			await respondWithAi(env, payload);
+		} else if (message.text.toLowerCase().includes('@meeshbot')) {
+			await respondWithAi(env, message);
 		}
 
 		return new Response('Success', { status: 200 });
 	},
 } satisfies ExportedHandler<Env>;
 
-async function syncEntities(env: Env, payload: GroupMePayload): Promise<void> {
+export async function syncMessageToDb(env: Env, message: GroupMeMessage): Promise<void> {
 	try {
-		const isBot = payload.sender_type.toLowerCase() === 'bot';
 		await env.DB.prepare(
-			`INSERT INTO user (id, name, avatar_url, is_bot)
-				VALUES (?, ?, ?, ?)
+			`INSERT INTO user (id, name, avatar_url)
+				VALUES (?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
 					name = excluded.name,
-					avatar_url = excluded.avatar_url,
-					is_bot = excluded.is_bot;`,
+					avatar_url = excluded.avatar_url;`,
 		)
-			.bind(payload.user_id, payload.name, payload.avatar_url, isBot)
-			.run();
-
-		await env.DB.prepare(
-			`INSERT INTO group_chat (id)
-				VALUES (?)
-				ON CONFLICT(id) DO NOTHING;`,
-		)
-			.bind(payload.group_id)
-			.run();
-
-		const attachments_json = JSON.stringify(payload.attachments);
-		await env.DB.prepare(
-			`INSERT INTO chat_message (id, group_id, sender_id, text, attachments) 
-				VALUES (?, ?, ?, ?, ?);`,
-		)
-			.bind(payload.id, payload.group_id, payload.user_id, payload.text, attachments_json)
+			.bind(message.user_id, message.name, message.avatar_url)
 			.run();
 
 		await env.DB.prepare(
@@ -91,7 +75,19 @@ async function syncEntities(env: Env, payload: GroupMePayload): Promise<void> {
 				VALUES (?, ?)
 				ON CONFLICT(user_id, group_id) DO NOTHING;`,
 		)
-			.bind(payload.user_id, payload.group_id)
+			.bind(message.user_id, message.group_id)
+			.run();
+
+		const attachments_json = JSON.stringify(message.attachments);
+		const date = new Date(message.created_at * 1000);
+		const timestampString = date.toISOString().replace('T', ' ').split('.')[0]; // "YYYY-MM-DD HH:MM:SS"
+
+		await env.DB.prepare(
+			`INSERT INTO chat_message (id, group_id, sender_id, text, attachments, timestamp) 
+				VALUES (?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO NOTHING;`,
+		)
+			.bind(message.id, message.group_id, message.user_id, message.text, attachments_json, timestampString)
 			.run();
 	} catch (err) {
 		console.log(err);

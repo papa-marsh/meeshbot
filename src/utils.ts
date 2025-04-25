@@ -1,14 +1,14 @@
-import { Env, GroupMePayload } from '.';
+import { Env, GroupMeMessage } from '.';
 
-type ChatMessage = {
+export type ChatMessage = {
 	timestamp: Date;
 	name: string;
 	text: string;
 };
 
-export async function respondInChat(env: Env, payload: GroupMePayload, message: string): Promise<void> {
-	const groupId = payload.group_id;
-	await sendMessage(env, groupId, message);
+export async function respondInChat(env: Env, message: GroupMeMessage, text: string): Promise<void> {
+	const groupId = message.group_id;
+	await sendMessage(env, groupId, text);
 }
 
 export async function sendMessage(env: Env, groupId: string, message: string): Promise<void> {

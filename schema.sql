@@ -1,8 +1,7 @@
 CREATE TABLE IF NOT EXISTS user (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    avatar_url TEXT DEFAULT '',
-    is_bot BOOLEAN DEFAULT FALSE
+    avatar_url TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS group_chat (
@@ -21,7 +20,7 @@ CREATE TABLE IF NOT EXISTS membership (
 
 CREATE TABLE IF NOT EXISTS chat_message (
     id TEXT PRIMARY KEY,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    timestamp DATETIME NOT NULL,
     group_id TEXT NOT NULL,
     sender_id TEXT NOT NULL,
     text TEXT DEFAULT '',
