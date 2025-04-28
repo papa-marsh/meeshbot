@@ -57,18 +57,9 @@ export async function scoreboard(env: Env, args: string[], message: GroupMeMessa
 	const counts = await getMessageCounts(env, message.group_id);
 
 	let scoreboardLines: string[] = ['🏆 Message Count Leaderboard 🏆\n'];
-	// const requesterIndex = counts.findIndex((c) => c.name === message.name);
 
 	for (let i = 0; i < counts.length; i++) {
-		// if (i < 3 || i === requesterIndex) {
 		scoreboardLines.push(`${i + 1}. ${counts[i].name}: ${counts[i].count}`);
-		// }
-		// if (i === 4) {
-		// 	scoreboardLines.push('...');
-		// }
-		// if (i >= 4 && i >= requesterIndex) {
-		// 	break;
-		// }
 	}
 	const scoreboardString = scoreboardLines.join('\n');
 
