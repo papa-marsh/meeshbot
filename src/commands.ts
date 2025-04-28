@@ -1,9 +1,24 @@
 import { Env, GroupMeMessage, syncMessageToDb } from '.';
-import { respondInChat } from './utils';
+import { getMessageCounts, respondInChat } from './utils';
 import { adminUserIds, botUserIds } from './secrets';
+import { helpMessage } from './registry';
+
+type GroupMeAPIResponse = {
+	meta: {
+		code: number;
+	};
+	response: {
+		count: number;
+		messages: GroupMeMessage[];
+	};
+};
 
 export async function ping(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
 	await respondInChat(env, message, 'pong');
+}
+
+export async function help(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
+	await respondInChat(env, message, helpMessage);
 }
 
 export async function whatissam(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
@@ -38,15 +53,27 @@ export async function roll(env: Env, args: string[], message: GroupMeMessage): P
 	await respondInChat(env, message, resultMessage);
 }
 
-type GroupMeAPIResponse = {
-	meta: {
-		code: number;
-	};
-	response: {
-		count: number;
-		messages: GroupMeMessage[];
-	};
-};
+export async function scoreboard(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+	const counts = await getMessageCounts(env, message.group_id);
+
+	let scoreboardLines: string[] = ['🏆 Message Count Leaderboard 🏆\n'];
+	// const requesterIndex = counts.findIndex((c) => c.name === message.name);
+
+	for (let i = 0; i < counts.length; i++) {
+		// if (i < 3 || i === requesterIndex) {
+		scoreboardLines.push(`${i + 1}. ${counts[i].name}: ${counts[i].count}`);
+		// }
+		// if (i === 4) {
+		// 	scoreboardLines.push('...');
+		// }
+		// if (i >= 4 && i >= requesterIndex) {
+		// 	break;
+		// }
+	}
+	const scoreboardString = scoreboardLines.join('\n');
+
+	await respondInChat(env, message, scoreboardString);
+}
 
 export async function sync(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
 	if (![...adminUserIds, ...botUserIds].includes(message.user_id)) {
@@ -62,7 +89,7 @@ export async function sync(env: Env, args: string[], message: GroupMeMessage): P
 	let beforeId = args[2] ?? null;
 	let total: number | string = parseInt(args[3] ?? 0);
 	let attempts = 0;
-	const maxAttempts = 5;
+	const maxAttempts = 4;
 
 	try {
 		let messages = await getMessages(env, groupId, beforeId ?? null);
@@ -90,7 +117,7 @@ export async function sync(env: Env, args: string[], message: GroupMeMessage): P
 
 async function getMessages(env: Env, groupId: string, beforeId: string | null = null): Promise<GroupMeMessage[]> {
 	const baseUrl = 'https://api.groupme.com/v3';
-	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=50`;
+	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=25`;
 
 	if (beforeId !== null) {
 		url += `&before_id=${beforeId}`;

@@ -31,7 +31,7 @@ async function buildContext(env: Env, message: GroupMeMessage): Promise<string> 
 
 	const historyIntro = `
 		The following is group chat message history, included for context. 
-		The timestamp of the message to which you're responding is ${now}.`;
+		The timestamp of the message to which you're responding is ${now}.\n\n`;
 	const context = staticAIContext + historyIntro + messageHistoryString;
 	return context;
 }
@@ -43,19 +43,24 @@ async function getResponse(
 	apiKey: string,
 	model: string,
 ): Promise<OpenAI.Responses.Response> {
-	const client = new OpenAI({ apiKey: apiKey });
-	const response = await client.responses.create({
-		model: model,
-		input: [
-			{
-				role: 'developer',
-				content: developerInput,
-			},
-			{
-				role: 'user',
-				content: userInput,
-			},
-		],
-	});
-	return response;
+	try {
+		const client = new OpenAI({ apiKey: apiKey });
+		const response = await client.responses.create({
+			model: model,
+			input: [
+				{
+					role: 'developer',
+					content: developerInput,
+				},
+				{
+					role: 'user',
+					content: userInput,
+				},
+			],
+		});
+		return response;
+	} catch (err) {
+		console.log('Failed to get an AI response', err);
+		throw new Error();
+	}
 }

@@ -6,6 +6,11 @@ export type ChatMessage = {
 	text: string;
 };
 
+type MessageCount = {
+	name: string;
+	count: number;
+};
+
 export async function respondInChat(env: Env, message: GroupMeMessage, text: string): Promise<void> {
 	const groupId = message.group_id;
 	await sendMessage(env, groupId, text);
@@ -79,3 +84,18 @@ export const easternFormatter = new Intl.DateTimeFormat('en-US', {
 	second: '2-digit',
 	hour12: true,
 });
+
+export async function getMessageCounts(env: Env, groupId: string): Promise<MessageCount[]> {
+	const { results } = await env.DB.prepare(
+		`SELECT user.name, COUNT(chat_message.id) AS count
+			FROM chat_message
+			JOIN user ON chat_message.sender_id = user.id
+			WHERE chat_message.group_id = ?
+			GROUP BY user.name
+			ORDER BY count DESC;`,
+	)
+		.bind(groupId)
+		.all<MessageCount>();
+
+	return results;
+}

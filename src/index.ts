@@ -1,5 +1,6 @@
 import { respondWithAi } from './chat';
 import { commandRegistry } from './registry';
+import { botUserIds } from './secrets';
 import { respondInChat } from './utils';
 
 export interface Env {
@@ -46,7 +47,7 @@ export default {
 			} else {
 				await respondInChat(env, message, "That's not a command IDIOT");
 			}
-		} else if (message.text.toLowerCase().includes('@meeshbot')) {
+		} else if (message.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(message.user_id)) {
 			await respondWithAi(env, message);
 		}
 
