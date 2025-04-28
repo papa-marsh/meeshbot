@@ -99,3 +99,39 @@ export async function getMessageCounts(env: Env, groupId: string): Promise<Messa
 
 	return results;
 }
+
+export async function syncMessageToDb(env: Env, message: GroupMeMessage): Promise<void> {
+	try {
+		await env.DB.prepare(
+			`INSERT INTO user (id, name, avatar_url)
+				VALUES (?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					name = excluded.name,
+					avatar_url = excluded.avatar_url;`,
+		)
+			.bind(message.user_id, message.name, message.avatar_url)
+			.run();
+
+		await env.DB.prepare(
+			`INSERT INTO membership (user_id, group_id) 
+				VALUES (?, ?)
+				ON CONFLICT(user_id, group_id) DO NOTHING;`,
+		)
+			.bind(message.user_id, message.group_id)
+			.run();
+
+		const attachments_json = JSON.stringify(message.attachments);
+		const date = new Date(message.created_at * 1000);
+		const timestampString = date.toISOString().replace('T', ' ').split('.')[0]; // "YYYY-MM-DD HH:MM:SS"
+
+		await env.DB.prepare(
+			`INSERT INTO chat_message (id, group_id, sender_id, text, attachments, timestamp) 
+				VALUES (?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO NOTHING;`,
+		)
+			.bind(message.id, message.group_id, message.user_id, message.text, attachments_json, timestampString)
+			.run();
+	} catch (err) {
+		console.log(err);
+	}
+}

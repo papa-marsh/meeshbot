@@ -1,5 +1,5 @@
-import { Env, GroupMeMessage, syncMessageToDb } from '.';
-import { getMessageCounts, respondInChat } from './utils';
+import { Env, GroupMeMessage } from '.';
+import { getMessageCounts, respondInChat, syncMessageToDb } from './utils';
 import { adminUserIds, botUserIds } from './secrets';
 import { helpMessage } from './registry';
 
