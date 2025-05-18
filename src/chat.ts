@@ -1,4 +1,4 @@
-import { Env, GroupMeMessage } from '.';
+import { Env, GroupMeMessage } from './types';
 import { easternFormatter, getMessageHistory, respondInChat } from './utils';
 import { OpenAI } from 'openai';
 import { staticAIContext } from './secrets';
@@ -62,5 +62,54 @@ async function getResponse(
 	} catch (err) {
 		console.log('Failed to get an AI response', err);
 		throw new Error();
+	}
+}
+
+export async function parseDateTime(env: Env, timeString: string): Promise<Date | null> {
+	const now = new Date();
+	const currentTimeString = easternFormatter.format(now);
+
+	const prompt = `
+		You are a date/time parser that converts natural language time descriptions into ISO 8601 string format timestamps.
+
+		Current date and time: ${currentTimeString}
+
+		INSTRUCTIONS:
+		- You must use the provided "Current date and time" instead of your internal understanding of the current date and time.
+		- Parse the following time description: "${timeString}"
+		- Assume all provided datetimes are in Eastern Time (America/New_York timezone)
+		- Perform the datetime interpretation in eastern time
+		- Return ONLY a ISO 8601 string format timestamp for the interpreted time
+		- The output timestamp MUST be in UTC time (convert from Eastern to UTC after interpretation)
+		- Do not include any explanations or text
+		- If you cannot determine a specific time, return 0
+		- The result must be either a valid ISO 8601 string format timestamp or 0 for failure to interpret
+
+		Example valid output: 2025-05-17T20:37:00Z
+	`;
+
+	try {
+		const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+		const response = await client.chat.completions.create({
+			model: 'gpt-4.1-nano',
+			messages: [{ role: 'system', content: prompt }],
+			temperature: 0.1,
+			max_tokens: 30,
+		});
+
+		const resultText = response.choices[0].message.content?.trim();
+		if (!resultText) return null;
+
+		// Handle the case where AI couldn't determine the time
+		if (resultText === '0') return null;
+
+		// Parse the ISO string to a Date object
+		const date = new Date(resultText);
+		if (date.toString() === 'Invalid Date') return null;
+
+		return date;
+	} catch (err) {
+		console.error('Error parsing date with AI:', err);
+		return null;
 	}
 }

@@ -1,17 +1,8 @@
-import { Env, GroupMeMessage } from '.';
-import { getMessageCounts, respondInChat, syncMessageToDb } from './utils';
+import { Env, GroupMeMessage, GroupMeAPIResponse, Reminder } from './types';
+import { easternFormatter, getMessageCounts, respondInChat, syncMessageToDb } from './utils';
 import { adminUserIds, botUserIds } from './secrets';
 import { helpMessage } from './registry';
-
-type GroupMeAPIResponse = {
-	meta: {
-		code: number;
-	};
-	response: {
-		count: number;
-		messages: GroupMeMessage[];
-	};
-};
+import { parseDateTime } from './chat';
 
 export async function ping(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
 	await respondInChat(env, message, 'pong');
@@ -127,4 +118,89 @@ async function getMessages(env: Env, groupId: string, beforeId: string | null = 
 	const messages: GroupMeMessage[] | null = json.response.messages;
 
 	return messages;
+}
+
+export async function remindme(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+	if (args.length < 2) {
+		await respondInChat(env, message, 'You need to tell me when to remind you, idiot');
+		return;
+	}
+
+	// Extract the reminder time and message
+	const timeText = args.slice(1).join(' ');
+	const reminderMessage = timeText.includes(' - ') ? timeText.substring(timeText.indexOf(' - ') + 3).trim() : "Here's your reminder!";
+	const timeString = timeText.includes(' - ') ? timeText.split(' - ')[0].trim() : timeText;
+
+	try {
+		const remindAtDate = await parseDateTime(env, timeString);
+		if (!remindAtDate) {
+			await respondInChat(env, message, "I can't figure out when that is... try something simpler");
+			return;
+		}
+
+		const now = new Date();
+		console.log(`Timestamp comparison: remindAtDate=${remindAtDate.toISOString()} now=${now.toISOString()}`);
+
+		// Ensure reminder is in the future
+		if (remindAtDate <= now) {
+			await respondInChat(env, message, "I can't remind you in the past, stupid");
+			return;
+		}
+
+		// Store reminder in database
+		await env.DB.prepare(
+			`INSERT INTO reminder (id, created, eta, group_id, user_id, message)
+			VALUES (?, ?, ?, ?, ?, ?);`,
+		)
+			.bind(
+				crypto.randomUUID(),
+				now.toISOString().replace('T', ' ').split('.')[0],
+				remindAtDate.toISOString().replace('T', ' ').split('.')[0],
+				message.group_id,
+				message.user_id,
+				reminderMessage,
+			)
+			.run();
+
+		const formattedRemindTime = easternFormatter.format(remindAtDate);
+		await respondInChat(env, message, `OK ${message.name.split(' ')[0]}, I'll remind you on ${formattedRemindTime}`);
+	} catch (err) {
+		console.error('Error creating reminder:', err);
+		await respondInChat(env, message, 'Something went wrong setting your reminder :(');
+	}
+}
+
+export async function reminders(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+	try {
+		// Build and execute the query
+		const query = env.DB.prepare(`
+			SELECT reminder.*, user.name AS user_name
+			FROM reminder
+			JOIN user ON reminder.user_id = user.id
+			WHERE reminder.sent = 0
+		`);
+		const { results } = await query.all<Reminder>();
+
+		// No reminders found
+		if (results.length === 0) {
+			await respondInChat(env, message, 'No reminders scheduled.');
+			return;
+		}
+
+		// Format the response
+		let response: string[] = ['📋 Upcoming Reminders:\n'];
+
+		for (const reminder of results) {
+			const remindAt = new Date(reminder.eta.replace(' ', 'T') + 'Z');
+			const formattedDate = easternFormatter.format(remindAt);
+
+			const line = `${reminder.user_name}: "${reminder.message}" - ${formattedDate}`;
+			response.push(line);
+		}
+
+		await respondInChat(env, message, response.join('\n'));
+	} catch (err) {
+		console.error('Error listing reminders:', err);
+		await respondInChat(env, message, 'Error retrieving reminders :(');
+	}
 }

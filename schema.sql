@@ -28,3 +28,15 @@ CREATE TABLE IF NOT EXISTS chat_message (
     FOREIGN KEY (group_id) REFERENCES group_chat(id) ON DELETE CASCADE,
     FOREIGN KEY (sender_id) REFERENCES user(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS reminder (
+    id TEXT PRIMARY KEY,
+    created DATETIME NOT NULL,
+    eta DATETIME NOT NULL,
+    group_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    sent BOOLEAN DEFAULT 0,
+    FOREIGN KEY (group_id) REFERENCES group_chat(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);

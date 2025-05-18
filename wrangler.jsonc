@@ -17,7 +17,10 @@
 		  "database_name": "meeshbot-db",
 		  "database_id": "5631cd74-44df-42f5-9f59-498914a7ce6b"
 		}
-	  ]
+	],
+	"triggers": {
+		"crons": ["* * * * *"]
+	}
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

@@ -1,15 +1,4 @@
-import { Env, GroupMeMessage } from '.';
-
-export type ChatMessage = {
-	timestamp: Date;
-	name: string;
-	text: string;
-};
-
-type MessageCount = {
-	name: string;
-	count: number;
-};
+import { Env, GroupMeMessage, ChatMessage, MessageCount } from './types';
 
 export async function respondInChat(env: Env, message: GroupMeMessage, text: string): Promise<void> {
 	const groupId = message.group_id;

@@ -1,27 +1,11 @@
 import { respondWithAi } from './chat';
 import { commandRegistry } from './registry';
 import { botUserIds } from './secrets';
-import { respondInChat, syncMessageToDb } from './utils';
-
-export interface Env {
-	DB: D1Database;
-	OPENAI_API_KEY: string;
-	GROUPME_TOKEN: string;
-}
-
-export interface GroupMeMessage {
-	id: string;
-	created_at: number;
-	sender_type: string;
-	text: string;
-	user_id: string;
-	name: string;
-	group_id: string;
-	avatar_url: string;
-	attachments: unknown[];
-}
+import { Env, GroupMeMessage, ScheduledController, Reminder } from './types';
+import { respondInChat, sendMessage, syncMessageToDb } from './utils';
 
 export default {
+	// Handle incoming webhook requests
 	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
 		if (request.method !== 'POST') {
 			return new Response('Method Not Allowed', { status: 405 });
@@ -37,6 +21,7 @@ export default {
 
 		await syncMessageToDb(env, message);
 
+		// Process a slash command or chat prompt
 		if (message.text.startsWith('/')) {
 			const args = message.text.trim().split(/\s+/);
 			const command = args[0].slice(1).toLowerCase();
@@ -53,4 +38,46 @@ export default {
 
 		return new Response('Success', { status: 200 });
 	},
+
+	// Handle cron trigger events
+	async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+		await checkAndSendDueReminders(env);
+	},
 } satisfies ExportedHandler<Env>;
+
+async function checkAndSendDueReminders(env: Env): Promise<void> {
+	try {
+		const now = new Date();
+		const nowIsoString = now.toISOString().replace('T', ' ').split('.')[0];
+
+		// Get all reminders that are due and not yet sent
+		const { results } = await env.DB.prepare(
+			`SELECT reminder.*, user.name AS user_name
+			FROM reminder
+			JOIN user ON reminder.user_id = user.id
+			WHERE reminder.eta <= ?
+			AND reminder.sent = 0
+			LIMIT 10;`,
+		)
+			.bind(nowIsoString)
+			.all<Reminder>();
+
+		if (results.length) {
+			console.log(`Found ${results.length} reminders to send`);
+		}
+
+		for (const reminder of results) {
+			const reminderText = `🔔 Reminder for @${reminder.user_name.split(' ')[0]}: ${reminder.message}`;
+
+			// Send the reminder message
+			await sendMessage(env, reminder.group_id, reminderText);
+
+			// Mark the reminder as sent
+			await env.DB.prepare(`UPDATE reminder SET sent = 1 WHERE id = ?;`).bind(reminder.id).run();
+
+			console.log(`Sent reminder ${reminder.id} to ${reminder.user_name}`);
+		}
+	} catch (err) {
+		console.error('Error checking reminders:', err);
+	}
+}
