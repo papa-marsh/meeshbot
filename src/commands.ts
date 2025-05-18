@@ -139,7 +139,7 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 		}
 
 		const now = new Date();
-		console.log(`Timestamp comparison: remindAtDate=${remindAtDate.toISOString()} now=${now.toISOString()}`);
+		console.log(`Timestamp comparison: now=${now.toISOString()} remindAtDate=${remindAtDate.toISOString()}`);
 
 		// Ensure reminder is in the future
 		if (remindAtDate <= now) {

@@ -1,9 +1,11 @@
 import { Env, GroupMeMessage } from './types';
 import { easternFormatter, getMessageHistory, respondInChat } from './utils';
 import { OpenAI } from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { staticAIContext } from './secrets';
 
 const CHAT_MODEL = 'gpt-4.1-nano';
+const COMPUTE_MODEL = 'claude-3-opus-20240229';
 
 export async function respondWithAi(env: Env, message: GroupMeMessage): Promise<void> {
 	const firstName = message.name.split(' ')[0];
@@ -79,25 +81,29 @@ export async function parseDateTime(env: Env, timeString: string): Promise<Date 
 		- Parse the following time description: "${timeString}"
 		- Assume all provided datetimes are in Eastern Time (America/New_York timezone)
 		- Perform the datetime interpretation in eastern time
-		- Return ONLY a ISO 8601 string format timestamp for the interpreted time
-		- The output timestamp MUST be in UTC time (convert from Eastern to UTC after interpretation)
+		- If only a day is given (eg. "tomorrow" or "next tuesday"), then assume the time is 10am Eastern
+		- Return ONLY a ISO 8601 string format timestamp for the interpreted time, in the Eastern timezone
 		- Do not include any explanations or text
 		- If you cannot determine a specific time, return 0
 		- The result must be either a valid ISO 8601 string format timestamp or 0 for failure to interpret
-
-		Example valid output: 2025-05-17T20:37:00Z
-	`;
+		
+		Example valid output: 2025-05-17T20:37:00-04:00
+		`;
+	// - After interpretation, convert the timestamp to UTC, adding hours and accounting for daylight savings as needed
 
 	try {
-		const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-		const response = await client.chat.completions.create({
-			model: 'gpt-4.1-nano',
-			messages: [{ role: 'system', content: prompt }],
+		const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+		const response = await client.messages.create({
+			model: COMPUTE_MODEL,
+			max_tokens: 1024,
 			temperature: 0.1,
-			max_tokens: 30,
+			messages: [{ role: 'user', content: prompt }],
 		});
 
-		const resultText = response.choices[0].message.content?.trim();
+		const contentBlock = response.content[0];
+		const resultText = contentBlock.type === 'text' ? contentBlock.text.trim() : null;
+		console.log(`currentTimeString=${currentTimeString}`);
+		console.log(`Parsing datetime. Received ${resultText} for timeString: "${timeString}"`);
 		if (!resultText) return null;
 
 		// Handle the case where AI couldn't determine the time
