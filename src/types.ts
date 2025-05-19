@@ -29,6 +29,26 @@ export type GroupMeAPIResponse = {
 	};
 };
 
+export interface Mention {
+	user_id: string;
+	index: number;
+	length: number;
+}
+
+export type ReplyAttachment = {
+	type: 'reply';
+	reply_id: string;
+	base_reply_id: string;
+};
+
+export type MentionsAttachment = {
+	type: 'mentions';
+	user_ids: string[];
+	loci: [number, number][];
+};
+
+export type MessageAttachment = ReplyAttachment | MentionsAttachment;
+
 // Database models
 export type ChatMessage = {
 	timestamp: Date;

@@ -1,7 +1,7 @@
 import { respondWithAi } from './chat';
 import { commandRegistry } from './registry';
 import { botUserIds } from './secrets';
-import { Env, GroupMeMessage, ScheduledController, Reminder } from './types';
+import { Env, GroupMeMessage, ScheduledController, Reminder, Mention } from './types';
 import { respondInChat, sendMessage, syncMessageToDb } from './utils';
 
 export default {
@@ -52,7 +52,7 @@ async function checkAndSendDueReminders(env: Env): Promise<void> {
 
 		// Get all reminders that are due and not yet sent
 		const { results } = await env.DB.prepare(
-			`SELECT reminder.*, user.name AS user_name
+			`SELECT reminder.*, user.name AS user_name, user.id AS user_id
 			FROM reminder
 			JOIN user ON reminder.user_id = user.id
 			WHERE reminder.eta <= ?
@@ -67,10 +67,18 @@ async function checkAndSendDueReminders(env: Env): Promise<void> {
 		}
 
 		for (const reminder of results) {
-			const reminderText = `🔔 Reminder for @${reminder.user_name.split(' ')[0]}: ${reminder.message}`;
-
+			const name = reminder.user_name.split(' ')[0];
+			const reminderText = `🔔 Reminder for ${name}: ${reminder.message}`;
+			const mentions: Mention[] = [
+				{
+					user_id: reminder.user_id,
+					index: 16,
+					length: name.length,
+				},
+			];
+			// 15, name.length
 			// Send the reminder message
-			await sendMessage(env, reminder.group_id, reminderText);
+			await sendMessage(env, reminder.group_id, reminderText, mentions, null);
 
 			// Mark the reminder as sent
 			await env.DB.prepare(`UPDATE reminder SET sent = 1 WHERE id = ?;`).bind(reminder.id).run();
