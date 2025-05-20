@@ -69,6 +69,7 @@ export interface Reminder {
 	user_id: string;
 	user_name: string;
 	message: string;
+	command_message_id: string;
 	sent: number;
 }
 

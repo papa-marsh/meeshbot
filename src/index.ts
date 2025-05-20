@@ -78,7 +78,7 @@ async function checkAndSendDueReminders(env: Env): Promise<void> {
 			];
 			// 15, name.length
 			// Send the reminder message
-			await sendMessage(env, reminder.group_id, reminderText, mentions, null);
+			await sendMessage(env, reminder.group_id, reminderText, mentions, reminder.command_message_id);
 
 			// Mark the reminder as sent
 			await env.DB.prepare(`UPDATE reminder SET sent = 1 WHERE id = ?;`).bind(reminder.id).run();

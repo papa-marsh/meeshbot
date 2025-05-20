@@ -149,8 +149,8 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 
 		// Store reminder in database
 		await env.DB.prepare(
-			`INSERT INTO reminder (id, created, eta, group_id, user_id, message)
-			VALUES (?, ?, ?, ?, ?, ?);`,
+			`INSERT INTO reminder (id, created, eta, group_id, user_id, message, command_message_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?);`,
 		)
 			.bind(
 				crypto.randomUUID(),
@@ -159,6 +159,7 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 				message.group_id,
 				message.user_id,
 				reminderMessage,
+				message.id,
 			)
 			.run();
 

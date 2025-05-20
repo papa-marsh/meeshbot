@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS reminder (
     group_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     message TEXT NOT NULL,
+    command_message_id TEXT NOT NULL,
     sent BOOLEAN DEFAULT 0,
     FOREIGN KEY (group_id) REFERENCES group_chat(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (command_message_id) REFERENCES chat_message(id) ON DELETE CASCADE
 );
