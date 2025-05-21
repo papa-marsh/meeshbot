@@ -1,11 +1,24 @@
-import { respondWithAi } from './chat';
-import { commandRegistry } from './registry';
+import { GroupMeMessage, sendMessage } from './integrations/groupMe';
+import { commandRegistry } from './commands/registry';
 import { botUserIds } from './secrets';
-import { Env, GroupMeMessage, ScheduledController, Reminder, Mention } from './types';
-import { respondInChat, sendMessage, syncMessageToDb } from './utils';
+import { respondWithAi } from './commands/chat';
+import { checkAndSendDueReminders } from './commands/reminders';
+import { syncMessageToDb } from './utils/db';
+
+export interface Env {
+	DB: D1Database;
+	OPENAI_API_KEY: string;
+	GROUPME_TOKEN: string;
+	ANTHROPIC_API_KEY: string;
+}
+
+export interface ScheduledController {
+	readonly scheduledTime: number;
+	readonly cron: string;
+	noRetry(): void;
+}
 
 export default {
-	// Handle incoming webhook requests
 	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
 		if (request.method !== 'POST') {
 			return new Response('Method Not Allowed', { status: 405 });
@@ -30,7 +43,7 @@ export default {
 			if (commandHandler) {
 				await commandHandler(env, args, message);
 			} else {
-				await respondInChat(env, message, "That's not a command IDIOT");
+				await sendMessage(env, message.group_id, "That's not a command IDIOT");
 			}
 		} else if (message.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(message.user_id)) {
 			await respondWithAi(env, message);
@@ -44,48 +57,3 @@ export default {
 		await checkAndSendDueReminders(env);
 	},
 } satisfies ExportedHandler<Env>;
-
-async function checkAndSendDueReminders(env: Env): Promise<void> {
-	try {
-		const now = new Date();
-		const nowIsoString = now.toISOString().replace('T', ' ').split('.')[0];
-
-		// Get all reminders that are due and not yet sent
-		const { results } = await env.DB.prepare(
-			`SELECT reminder.*, user.name AS user_name, user.id AS user_id
-			FROM reminder
-			JOIN user ON reminder.user_id = user.id
-			WHERE reminder.eta <= ?
-			AND reminder.sent = 0
-			LIMIT 10;`,
-		)
-			.bind(nowIsoString)
-			.all<Reminder>();
-
-		if (results.length) {
-			console.log(`Found ${results.length} reminders to send`);
-		}
-
-		for (const reminder of results) {
-			const name = reminder.user_name.split(' ')[0];
-			const reminderText = `🔔 Reminder for ${name}: ${reminder.message}`;
-			const mentions: Mention[] = [
-				{
-					user_id: reminder.user_id,
-					index: 16,
-					length: name.length,
-				},
-			];
-			// 15, name.length
-			// Send the reminder message
-			await sendMessage(env, reminder.group_id, reminderText, mentions, reminder.command_message_id);
-
-			// Mark the reminder as sent
-			await env.DB.prepare(`UPDATE reminder SET sent = 1 WHERE id = ?;`).bind(reminder.id).run();
-
-			console.log(`Sent reminder ${reminder.id} to ${reminder.user_name}`);
-		}
-	} catch (err) {
-		console.error('Error checking reminders:', err);
-	}
-}

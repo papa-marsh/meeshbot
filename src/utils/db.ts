@@ -1,62 +1,6 @@
-import { Env, GroupMeMessage, ChatMessage, MessageCount, Mention, MessageAttachment, MentionsAttachment } from './types';
-
-export async function respondInChat(env: Env, message: GroupMeMessage, text: string): Promise<void> {
-	const groupId = message.group_id;
-	await sendMessage(env, groupId, text);
-}
-
-export async function sendMessage(
-	env: Env,
-	groupId: string,
-	message: string,
-	mentions: Mention[] = [],
-	replyTo: string | null = null,
-): Promise<void> {
-	const payload: {
-		text: string;
-		bot_id: string;
-		attachments: MessageAttachment[];
-	} = {
-		text: message,
-		bot_id: await getBotId(env, groupId),
-		attachments: [],
-	};
-
-	if (replyTo) {
-		payload.attachments.push({ type: 'reply', reply_id: replyTo, base_reply_id: replyTo });
-	}
-
-	if (mentions.length > 0) {
-		const mentionsAttachment: MentionsAttachment = {
-			type: 'mentions',
-			user_ids: [] as string[],
-			loci: [] as [number, number][],
-		};
-		for (const mention of mentions) {
-			mentionsAttachment.user_ids.push(mention.user_id);
-			mentionsAttachment.loci.push([mention.index, mention.length]);
-		}
-		payload.attachments.push(mentionsAttachment);
-	}
-
-	const url = 'https://api.groupme.com/v3/bots/post';
-	const init: RequestInit = {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(payload),
-	};
-
-	try {
-		const response = await fetch(url, init);
-		if (!response.ok) {
-			console.error('Error sending message', await response.text());
-		}
-	} catch (err) {
-		console.error('Exception while sending message:', err);
-	}
-}
+import { Env } from '../index';
+import { GroupMeMessage } from '../integrations/groupMe';
+import { ChatMessage, MessageCount } from '../integrations/db';
 
 export async function getBotId(env: Env, groupId: string): Promise<string> {
 	const result = await env.DB.prepare(
@@ -90,16 +34,6 @@ export async function getMessageHistory(env: Env, groupId: string): Promise<Chat
 		timestamp: new Date(row.timestamp),
 	})) as ChatMessage[];
 }
-
-export const easternFormatter = new Intl.DateTimeFormat('en-US', {
-	timeZone: 'America/New_York',
-	year: 'numeric',
-	month: '2-digit',
-	day: '2-digit',
-	hour: '2-digit',
-	minute: '2-digit',
-	hour12: true,
-});
 
 export async function getMessageCounts(env: Env, groupId: string): Promise<MessageCount[]> {
 	const { results } = await env.DB.prepare(
