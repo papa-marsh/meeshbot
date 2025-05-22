@@ -1,20 +1,21 @@
 import { Env } from '../index';
 import { GroupMeMessage } from '../integrations/groupMe';
 import { reminders, remindme } from './reminders';
-import { help, ping, roll, scoreboard, whatissam } from './basic';
-import { sync } from './admin';
+import { help, ping, roll, scoreboard, whatissam as whatIsSam } from './basic';
+import { syncMessages, syncTigers } from './admin';
 
 export const commandRegistry: {
-	[command: string]: (env: Env, args: string[], payload: GroupMeMessage) => Promise<void>;
+	[command: string]: (env: Env, args: string[], triggerMessage: GroupMeMessage) => Promise<void>;
 } = {
 	ping: ping,
 	help: help,
-	whatissam: whatissam,
+	whatissam: whatIsSam,
 	roll: roll,
 	scoreboard: scoreboard,
-	sync: sync,
+	syncmessages: syncMessages,
 	remindme: remindme,
 	reminders: reminders,
+	synctigers: syncTigers,
 };
 
 export const helpMessage = `Command List:

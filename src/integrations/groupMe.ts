@@ -1,6 +1,8 @@
 import { Env } from '../index';
 import { getBotId } from '../utils/db';
 
+const BASE_URL = 'https://api.groupme.com/v3';
+
 export interface GroupMeMessage {
 	id: string;
 	created_at: number;
@@ -77,7 +79,7 @@ export async function sendMessage(
 		payload.attachments.push(mentionsAttachment);
 	}
 
-	const url = 'https://api.groupme.com/v3/bots/post';
+	const url = `${BASE_URL}/bots/post`;
 	const init: RequestInit = {
 		method: 'POST',
 		headers: {
@@ -94,4 +96,26 @@ export async function sendMessage(
 	} catch (err) {
 		console.error('Exception while sending message:', err);
 	}
+}
+
+export async function getMessages(env: Env, groupId: string, beforeId: string | null = null): Promise<GroupMeMessage[]> {
+	let url = `${BASE_URL}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=25`;
+
+	if (beforeId !== null) {
+		url += `&before_id=${beforeId}`;
+	}
+
+	const response = await fetch(url);
+	if (response.status === 304) {
+		return [];
+	}
+
+	if (response.status !== 200) {
+		throw new Error(`Received ${response.status}`);
+	}
+
+	const json: GroupMeAPIResponse = await response.json();
+	const messages: GroupMeMessage[] | null = json.response.messages;
+
+	return messages;
 }

@@ -3,30 +3,30 @@ import { getMessageCounts } from '../utils/db';
 import { helpMessage } from './registry';
 import { GroupMeMessage, sendMessage } from '../integrations/groupMe';
 
-export async function ping(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
-	await sendMessage(env, message.group_id, 'pong');
+export async function ping(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	await sendMessage(env, triggerMessage.group_id, 'pong');
 }
 
-export async function help(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
-	await sendMessage(env, message.group_id, helpMessage);
+export async function help(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	await sendMessage(env, triggerMessage.group_id, helpMessage);
 }
 
-export async function whatissam(env: Env, _args: string[], message: GroupMeMessage): Promise<void> {
-	await sendMessage(env, message.group_id, 'idk sounds like a bitch');
+export async function whatissam(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	await sendMessage(env, triggerMessage.group_id, 'idk sounds like a bitch');
 }
 
-export async function roll(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+export async function roll(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
 	const rollPattern = /^(\d+)d(\d+)$/i;
 	const match = args[1].match(rollPattern);
 	if (!match) {
-		await sendMessage(env, message.group_id, "That's not a valid dice roll format dumb ass");
+		await sendMessage(env, triggerMessage.group_id, "That's not a valid dice roll format dumb ass");
 		return;
 	}
 
 	const numDice = parseInt(match[1], 10);
 	const numSides = parseInt(match[2], 10);
 	if (numDice <= 0 || numSides <= 0) {
-		await sendMessage(env, message.group_id, 'Are you stupid? The numbers need to be greater than zero');
+		await sendMessage(env, triggerMessage.group_id, 'Are you stupid? The numbers need to be greater than zero');
 		return;
 	}
 
@@ -40,11 +40,11 @@ export async function roll(env: Env, args: string[], message: GroupMeMessage): P
 
 	const resultMessage = `${numDice}d${numSides} rolled ${total} (${rolls.join(', ')})`;
 
-	await sendMessage(env, message.group_id, resultMessage);
+	await sendMessage(env, triggerMessage.group_id, resultMessage);
 }
 
-export async function scoreboard(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
-	const counts = await getMessageCounts(env, message.group_id);
+export async function scoreboard(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	const counts = await getMessageCounts(env, triggerMessage.group_id);
 
 	let scoreboardLines: string[] = ['🏆 Message Count Leaderboard 🏆\n'];
 
@@ -53,5 +53,5 @@ export async function scoreboard(env: Env, args: string[], message: GroupMeMessa
 	}
 	const scoreboardString = scoreboardLines.join('\n');
 
-	await sendMessage(env, message.group_id, scoreboardString);
+	await sendMessage(env, triggerMessage.group_id, scoreboardString);
 }

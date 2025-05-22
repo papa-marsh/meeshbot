@@ -10,6 +10,7 @@ export interface Env {
 	OPENAI_API_KEY: string;
 	GROUPME_TOKEN: string;
 	ANTHROPIC_API_KEY: string;
+	BALLDONTLIE_API_KEY: string;
 }
 
 export interface ScheduledController {
@@ -24,29 +25,29 @@ export default {
 			return new Response('Method Not Allowed', { status: 405 });
 		}
 
-		let message: GroupMeMessage;
+		let triggerMessage: GroupMeMessage;
 		try {
-			message = await request.json();
-			console.log(`${message.name.split(' ')[0]}: ${message.text}`, message);
+			triggerMessage = await request.json();
+			console.log(`${triggerMessage.name.split(' ')[0]}: ${triggerMessage.text}`, triggerMessage);
 		} catch {
 			return new Response('Bad Request: Invalid JSON', { status: 400 });
 		}
 
-		await syncMessageToDb(env, message);
+		await syncMessageToDb(env, triggerMessage);
 
 		// Process a slash command or chat prompt
-		if (message.text.startsWith('/')) {
-			const args = message.text.trim().split(/\s+/);
+		if (triggerMessage.text.startsWith('/')) {
+			const args = triggerMessage.text.trim().split(/\s+/);
 			const command = args[0].slice(1).toLowerCase();
 
 			const commandHandler = commandRegistry[command];
 			if (commandHandler) {
-				await commandHandler(env, args, message);
+				await commandHandler(env, args, triggerMessage);
 			} else {
-				await sendMessage(env, message.group_id, "That's not a command IDIOT");
+				await sendMessage(env, triggerMessage.group_id, "That's not a command IDIOT");
 			}
-		} else if (message.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(message.user_id)) {
-			await respondWithAi(env, message);
+		} else if (triggerMessage.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
+			await respondWithAi(env, triggerMessage);
 		}
 
 		return new Response('Success', { status: 200 });

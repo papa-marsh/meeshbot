@@ -3,9 +3,9 @@ import { easternFormatter, parseDateTime } from '../utils/datetime';
 import { GroupMeMessage, Mention, sendMessage } from '../integrations/groupMe';
 import { Reminder } from '../integrations/db';
 
-export async function remindme(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+export async function remindme(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
 	if (args.length < 2) {
-		await sendMessage(env, message.group_id, 'You need to tell me when to remind you, idiot');
+		await sendMessage(env, triggerMessage.group_id, 'You need to tell me when to remind you, idiot');
 		return;
 	}
 
@@ -17,7 +17,7 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 	try {
 		const remindAtDate = await parseDateTime(env, timeString);
 		if (!remindAtDate) {
-			await sendMessage(env, message.group_id, "I can't figure out when that is... try something simpler");
+			await sendMessage(env, triggerMessage.group_id, "I can't figure out when that is... try something simpler");
 			return;
 		}
 
@@ -26,7 +26,7 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 
 		// Ensure reminder is in the future
 		if (remindAtDate <= now) {
-			await sendMessage(env, message.group_id, "I can't remind you in the past, stupid");
+			await sendMessage(env, triggerMessage.group_id, "I can't remind you in the past, stupid");
 			return;
 		}
 
@@ -39,22 +39,22 @@ export async function remindme(env: Env, args: string[], message: GroupMeMessage
 				crypto.randomUUID(),
 				now.toISOString().replace('T', ' ').split('.')[0],
 				remindAtDate.toISOString().replace('T', ' ').split('.')[0],
-				message.group_id,
-				message.user_id,
+				triggerMessage.group_id,
+				triggerMessage.user_id,
 				reminderMessage,
-				message.id,
+				triggerMessage.id,
 			)
 			.run();
 
 		const formattedRemindTime = easternFormatter.format(remindAtDate);
-		await sendMessage(env, message.group_id, `OK ${message.name.split(' ')[0]}, I'll remind you on ${formattedRemindTime}`);
+		await sendMessage(env, triggerMessage.group_id, `OK ${triggerMessage.name.split(' ')[0]}, I'll remind you on ${formattedRemindTime}`);
 	} catch (err) {
 		console.error('Error creating reminder:', err);
-		await sendMessage(env, message.group_id, 'Something went wrong setting your reminder :(');
+		await sendMessage(env, triggerMessage.group_id, 'Something went wrong setting your reminder :(');
 	}
 }
 
-export async function reminders(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
+export async function reminders(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
 	try {
 		// Build and execute the query
 		const query = env.DB.prepare(`
@@ -67,7 +67,7 @@ export async function reminders(env: Env, args: string[], message: GroupMeMessag
 
 		// No reminders found
 		if (results.length === 0) {
-			await sendMessage(env, message.group_id, 'No reminders scheduled.');
+			await sendMessage(env, triggerMessage.group_id, 'No reminders scheduled.');
 			return;
 		}
 
@@ -82,10 +82,10 @@ export async function reminders(env: Env, args: string[], message: GroupMeMessag
 			response.push(line);
 		}
 
-		await sendMessage(env, message.group_id, response.join('\n'));
+		await sendMessage(env, triggerMessage.group_id, response.join('\n'));
 	} catch (err) {
 		console.error('Error listing reminders:', err);
-		await sendMessage(env, message.group_id, 'Error retrieving reminders :(');
+		await sendMessage(env, triggerMessage.group_id, 'Error retrieving reminders :(');
 	}
 }
 
@@ -120,11 +120,9 @@ export async function checkAndSendDueReminders(env: Env): Promise<void> {
 					length: name.length,
 				},
 			];
-			// 15, name.length
-			// Send the reminder message
-			await sendMessage(env, reminder.group_id, reminderText, mentions, reminder.command_message_id);
 
-			// Mark the reminder as sent
+			// Send the reminder and mark as sent
+			await sendMessage(env, reminder.group_id, reminderText, mentions, reminder.command_message_id);
 			await env.DB.prepare(`UPDATE reminder SET sent = 1 WHERE id = ?;`).bind(reminder.id).run();
 
 			console.log(`Sent reminder ${reminder.id} to ${reminder.user_name}`);

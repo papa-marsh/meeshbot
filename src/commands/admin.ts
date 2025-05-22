@@ -1,25 +1,27 @@
 import { Env } from '../index';
 import { syncMessageToDb } from '../utils/db';
 import { adminUserIds, botUserIds } from '../secrets';
-import { GroupMeAPIResponse, GroupMeMessage, sendMessage } from '../integrations/groupMe';
+import { getMessages, GroupMeMessage, sendMessage } from '../integrations/groupMe';
+import { getGames, GetGamesParams, saveGameToDb, TIGERS_ID } from '../integrations/mlb';
 
-async function isAdmin(userId: string): Promise<boolean> {
+export async function isAdmin(userId: string): Promise<boolean> {
 	if ([...adminUserIds, ...botUserIds].includes(userId)) {
 		return true;
 	} else return false;
 }
 
-export async function sync(env: Env, args: string[], message: GroupMeMessage): Promise<void> {
-	if (!isAdmin(message.user_id)) {
-		await sendMessage(env, message.group_id, 'no');
+export async function syncMessages(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	if (!isAdmin(triggerMessage.user_id)) {
+		await sendMessage(env, triggerMessage.group_id, 'no');
 		return;
 	}
 
-	if (!botUserIds.includes(message.user_id)) {
-		await sendMessage(env, message.group_id, 'Syncing messages...');
+	if (!botUserIds.includes(triggerMessage.user_id)) {
+		await sendMessage(env, triggerMessage.group_id, 'Syncing messages...');
 	}
 
-	const groupId = args[1] ?? message.group_id;
+	// Example Usage: /syncmessages <groupId> <beforeMessageId?>
+	const groupId = args[1] ?? triggerMessage.group_id;
 	let beforeId = args[2] ?? null;
 	let total: number | string = parseInt(args[3] ?? 0);
 	let attempts = 0;
@@ -31,7 +33,7 @@ export async function sync(env: Env, args: string[], message: GroupMeMessage): P
 		while (messages.length) {
 			attempts += 1;
 			if (attempts > maxAttempts) {
-				await sendMessage(env, message.group_id, `/sync ${groupId} ${beforeId} ${total}`);
+				await sendMessage(env, triggerMessage.group_id, `/sync ${groupId} ${beforeId} ${total}`);
 				return;
 			}
 			for (const messageTemp of messages) {
@@ -42,32 +44,59 @@ export async function sync(env: Env, args: string[], message: GroupMeMessage): P
 			console.log(`wrote ${messages.length} messages (total: ${total})`);
 			messages = await getMessages(env, groupId, beforeId);
 		}
-		await sendMessage(env, message.group_id, `Success - Synced ${total} messages`);
+		await sendMessage(env, triggerMessage.group_id, `Success - Synced ${total} messages`);
 	} catch (err) {
 		console.log('Exception raised while syncing', err);
-		await sendMessage(env, message.group_id, `Something went wrong after ${total} messages :(`);
+		await sendMessage(env, triggerMessage.group_id, `Something went wrong after ${total} messages :(`);
 	}
 }
 
-async function getMessages(env: Env, groupId: string, beforeId: string | null = null): Promise<GroupMeMessage[]> {
-	const baseUrl = 'https://api.groupme.com/v3';
-	let url = `${baseUrl}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=25`;
-
-	if (beforeId !== null) {
-		url += `&before_id=${beforeId}`;
+export async function syncTigers(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	if (!isAdmin(triggerMessage.user_id)) {
+		await sendMessage(env, triggerMessage.group_id, 'no');
+		return;
 	}
 
-	const response = await fetch(url);
-	if (response.status === 304) {
-		return [];
+	if (!botUserIds.includes(triggerMessage.user_id)) {
+		await sendMessage(env, triggerMessage.group_id, 'Syncing games...');
 	}
 
-	if (response.status !== 200) {
-		throw new Error(`Received ${response.status}`);
+	let total: number | string = parseInt(args[3] ?? 0);
+	let filterArg: number | string = args[1];
+
+	let gamesParams: GetGamesParams = {
+		team_ids: [TIGERS_ID],
+		cursor: args[2] ?? null,
+	};
+
+	// Parse filter string. `future` will fetch only future games
+	if (filterArg === 'future') {
+		gamesParams.dateGEQ = new Date();
+	} else {
+		filterArg = Number(filterArg ?? 2025);
+		gamesParams.seasons = [filterArg];
 	}
 
-	const json: GroupMeAPIResponse = await response.json();
-	const messages: GroupMeMessage[] | null = json.response.messages;
+	try {
+		let [games, nextCursor] = await getGames(env, gamesParams);
 
-	return messages;
+		if (games.length > 0) {
+			for (const gamesTemp of games) {
+				const gameDate = new Date(gamesTemp.date);
+				gamesTemp.notified = gameDate < new Date();
+
+				await saveGameToDb(env, gamesTemp);
+				total += 1;
+			}
+			console.log(`wrote ${games.length} messages (total: ${total})`);
+		}
+		if (nextCursor) {
+			await sendMessage(env, triggerMessage.group_id, `/synctigers ${filterArg} ${nextCursor} ${total}`);
+		} else {
+			await sendMessage(env, triggerMessage.group_id, `Success - Synced ${total} games`);
+		}
+	} catch (err) {
+		console.log('Exception raised while syncing', err);
+		await sendMessage(env, triggerMessage.group_id, `Something went wrong after ${total} games :(`);
+	}
 }

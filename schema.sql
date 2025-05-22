@@ -1,3 +1,5 @@
+-- npx wrangler d1 execute meeshbot-db --remote --command=""
+
 CREATE TABLE IF NOT EXISTS user (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -41,4 +43,21 @@ CREATE TABLE IF NOT EXISTS reminder (
     FOREIGN KEY (group_id) REFERENCES group_chat(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY (command_message_id) REFERENCES chat_message(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS mlb_game (
+    id INTEGER PRIMARY KEY,
+    status TEXT NOT NULL,
+    date DATETIME NOT NULL,
+    season INTEGER NOT NULL,
+    home_team_abbr TEXT NOT NULL,
+    home_team_info TEXT NOT NULL,
+    home_team_stats TEXT NOT NULL,
+    away_team_abbr TEXT NOT NULL,
+    away_team_info TEXT NOT NULL,
+    away_team_stats TEXT NOT NULL,
+    postseason BOOLEAN NOT NULL,
+    venue TEXT NOT NULL,
+    scoring_summary TEXT DEFAULT '[]',
+    notified BOOLEAN DEFAULT 0
 );
