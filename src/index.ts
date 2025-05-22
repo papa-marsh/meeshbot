@@ -4,6 +4,7 @@ import { botUserIds } from './secrets';
 import { respondWithAi } from './commands/chat';
 import { checkAndSendDueReminders } from './commands/reminders';
 import { syncMessageToDb } from './utils/db';
+import { syncUpcomingGames } from './integrations/mlb';
 
 export interface Env {
 	DB: D1Database;
@@ -11,6 +12,7 @@ export interface Env {
 	GROUPME_TOKEN: string;
 	ANTHROPIC_API_KEY: string;
 	BALLDONTLIE_API_KEY: string;
+	TESTING_GROUP_ID: string;
 }
 
 export interface ScheduledController {
@@ -55,6 +57,13 @@ export default {
 
 	// Handle cron trigger events
 	async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-		await checkAndSendDueReminders(env);
+		console.log(`Scheduled job running at ${new Date().toISOString()} with cron: ${controller.cron}`);
+
+		if (controller.cron === '* * * * *') {
+			await checkAndSendDueReminders(env);
+		}
+		if (controller.cron === '* */10 * * *') {
+			await syncUpcomingGames(env, 7);
+		}
 	},
 } satisfies ExportedHandler<Env>;

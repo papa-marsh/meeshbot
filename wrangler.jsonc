@@ -19,7 +19,10 @@
 		}
 	],
 	"triggers": {
-		"crons": ["* * * * *"]
+		"crons": [
+			"* * * * *",
+			"* */10 * * *"
+		]
 	}
 	/**
 	 * Smart Placement

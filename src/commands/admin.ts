@@ -2,7 +2,7 @@ import { Env } from '../index';
 import { syncMessageToDb } from '../utils/db';
 import { adminUserIds, botUserIds } from '../secrets';
 import { getMessages, GroupMeMessage, sendMessage } from '../integrations/groupMe';
-import { getGames, GetGamesParams, saveGameToDb, TIGERS_ID } from '../integrations/mlb';
+import { Game, getGames, saveGameToDb } from '../integrations/mlb';
 
 export async function isAdmin(userId: string): Promise<boolean> {
 	if ([...adminUserIds, ...botUserIds].includes(userId)) {
@@ -58,45 +58,30 @@ export async function syncTigers(env: Env, args: string[], triggerMessage: Group
 	}
 
 	if (!botUserIds.includes(triggerMessage.user_id)) {
+		console.log('Syncing Tigers games');
 		await sendMessage(env, triggerMessage.group_id, 'Syncing games...');
 	}
 
-	let total: number | string = parseInt(args[3] ?? 0);
-	let filterArg: number | string = args[1];
-
-	let gamesParams: GetGamesParams = {
-		team_ids: [TIGERS_ID],
-		cursor: args[2] ?? null,
-	};
-
-	// Parse filter string. `future` will fetch only future games
-	if (filterArg === 'future') {
-		gamesParams.dateGEQ = new Date();
-	} else {
-		filterArg = Number(filterArg ?? 2025);
-		gamesParams.seasons = [filterArg];
-	}
+	const season = parseInt(args[1] ?? new Date().getFullYear());
+	let cursor: string | undefined = args[2] ?? undefined;
+	let totalProcessed = parseInt(args[3] ?? 0);
+	let games: Game[] = [];
 
 	try {
-		let [games, nextCursor] = await getGames(env, gamesParams);
-
-		if (games.length > 0) {
-			for (const gamesTemp of games) {
-				const gameDate = new Date(gamesTemp.date);
-				gamesTemp.notified = gameDate < new Date();
-
-				await saveGameToDb(env, gamesTemp);
-				total += 1;
-			}
-			console.log(`wrote ${games.length} messages (total: ${total})`);
+		[games, cursor] = await getGames(env, cursor, undefined, season);
+		for (const game of games) {
+			await saveGameToDb(env, game);
+			totalProcessed += 1;
 		}
-		if (nextCursor) {
-			await sendMessage(env, triggerMessage.group_id, `/synctigers ${filterArg} ${nextCursor} ${total}`);
-		} else {
-			await sendMessage(env, triggerMessage.group_id, `Success - Synced ${total} games`);
-		}
-	} catch (err) {
-		console.log('Exception raised while syncing', err);
-		await sendMessage(env, triggerMessage.group_id, `Something went wrong after ${total} games :(`);
+		console.log(`Synced ${games.length} games: ${totalProcessed} total`);
+	} catch (error) {
+		console.error('Error syncing Tigers games:', error);
+		sendMessage(env, triggerMessage.group_id, `Failed to sync Tigers games after ${totalProcessed} games`);
+	}
+
+	if (cursor) {
+		await sendMessage(env, triggerMessage.group_id, `/synctigers ${season} ${cursor} ${totalProcessed}`);
+	} else {
+		await sendMessage(env, triggerMessage.group_id, `Success - Synced ${totalProcessed} games`);
 	}
 }
