@@ -1,5 +1,5 @@
 import { Env } from '../index';
-import { getBotId } from '../utils/db';
+import { getBotId, getGroupIds, syncMessageToDb } from '../utils/db';
 
 const BASE_URL = 'https://api.groupme.com/v3';
 
@@ -118,4 +118,64 @@ export async function getMessages(env: Env, groupId: string, beforeId: string | 
 	const messages: GroupMeMessage[] | null = json.response.messages;
 
 	return messages;
+}
+
+export async function periodicMessageSync(env: Env, hoursToSync: number): Promise<void> {
+	console.log(`Syncing messages from the last ${hoursToSync} hours...`);
+	const groupIds = await getGroupIds(env);
+	const cutoffTime = new Date(Date.now() - hoursToSync * 60 * 60 * 1000);
+	const cutoffTimeString = cutoffTime.toISOString().replace('T', ' ').split('.')[0];
+
+	for (const groupId of groupIds) {
+		console.log(`Syncing messages for group: ${groupId}`);
+		try {
+			// Find the most recent message from before the cutoff time to use as after_id
+			const lastOldMessage = await env.DB.prepare(
+				`SELECT id FROM chat_message 
+				 WHERE group_id = ? AND timestamp < ? 
+				 ORDER BY timestamp DESC 
+				 LIMIT 1`,
+			)
+				.bind(groupId, cutoffTimeString)
+				.first<{ id: string }>();
+
+			let afterId = lastOldMessage?.id;
+			let hasMoreMessages = true;
+
+			// Paginate through all messages after the cutoff
+			while (hasMoreMessages) {
+				let url = `${BASE_URL}/groups/${groupId}/messages?token=${env.GROUPME_TOKEN}&limit=100&after_id=${afterId}`;
+
+				const response = await fetch(url);
+
+				if (response.status === 304) {
+					console.log(`Received 304 status. No more messages.`);
+					hasMoreMessages = false;
+					continue;
+				}
+
+				if (!response.ok) {
+					console.error(`Error fetching messages for group ${groupId}:`, response.status);
+					break;
+				}
+
+				const json: GroupMeAPIResponse = await response.json();
+				const messages = json.response.messages;
+
+				if (!messages || messages.length === 0) {
+					hasMoreMessages = false;
+					continue;
+				}
+
+				// Sync messages to database
+				console.log(`Syncing ${messages.length} messages`);
+				for (const message of messages) {
+					await syncMessageToDb(env, message);
+				}
+				afterId = messages[messages.length - 1].id;
+			}
+		} catch (error) {
+			console.error(`Error syncing messages for group ${groupId}:`, error);
+		}
+	}
 }

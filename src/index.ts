@@ -1,4 +1,4 @@
-import { GroupMeMessage, sendMessage } from './integrations/groupMe';
+import { GroupMeMessage, periodicMessageSync, sendMessage } from './integrations/groupMe';
 import { commandRegistry } from './commands/registry';
 import { botUserIds } from './secrets';
 import { respondWithAi } from './commands/chat';
@@ -62,8 +62,11 @@ export default {
 		if (controller.cron === '* * * * *') {
 			await checkAndSendDueReminders(env);
 		}
-		if (controller.cron === '* */10 * * *') {
+		if (controller.cron === '*/10 * * * *') {
 			await syncUpcomingGames(env, 7);
+		}
+		if (controller.cron === '0 4 * * *') {
+			await periodicMessageSync(env, 48);
 		}
 	},
 } satisfies ExportedHandler<Env>;

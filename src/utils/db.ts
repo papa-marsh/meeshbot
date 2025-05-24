@@ -2,6 +2,11 @@ import { Env } from '../index';
 import { GroupMeMessage } from '../integrations/groupMe';
 import { ChatMessage, MessageCount } from '../integrations/db';
 
+export async function getGroupIds(env: Env): Promise<string[]> {
+	const result = await env.DB.prepare(`SELECT id FROM group_chat;`).all<{ id: string }>();
+	return result.results.map((row) => row.id);
+}
+
 export async function getBotId(env: Env, groupId: string): Promise<string> {
 	const result = await env.DB.prepare(
 		`SELECT bot_id FROM group_chat 

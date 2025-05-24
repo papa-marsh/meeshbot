@@ -1,3 +1,5 @@
+// https://mlb.balldontlie.io/?javascript#mlb-api
+
 import { Env } from '../index';
 import { sendMessage } from './groupMe';
 

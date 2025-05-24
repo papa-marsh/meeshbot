@@ -3,7 +3,7 @@ import { OpenAI } from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const CHAT_MODEL = 'gpt-4.1-nano';
-export const COMPUTE_MODEL = 'claude-3-opus-20240229';
+export const COMPUTE_MODEL = 'claude-opus-4-20250514';
 
 export async function getOpenAiResponse(
 	env: Env,
