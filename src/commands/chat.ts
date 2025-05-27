@@ -1,7 +1,7 @@
 import { Env } from '../index';
 import { getMessageHistory } from '../utils/db';
 import { staticAIContext } from '../secrets';
-import { getOpenAiResponse, CHAT_MODEL } from '../integrations/ai';
+import { getOpenAiResponse, OPENAI_MODEL } from '../integrations/ai';
 import { easternFormatter } from '../utils/datetime';
 import { GroupMeMessage, sendMessage } from '../integrations/groupMe';
 
@@ -10,7 +10,7 @@ export async function respondWithAi(env: Env, message: GroupMeMessage): Promise<
 	const text = `${firstName}: ${message.text}`;
 	const context = await buildContext(env, message);
 
-	const response = await getOpenAiResponse(env, context, text, CHAT_MODEL);
+	const response = await getOpenAiResponse(env, context, text, OPENAI_MODEL);
 	const output = response ?? 'Received an invalid response from the robot overlords :(';
 
 	await sendMessage(env, message.group_id, output);

@@ -3,6 +3,7 @@ import { GroupMeMessage } from '../integrations/groupMe';
 import { reminders, remindme } from './reminders';
 import { help, ping, roll, scoreboard, whatissam as whatIsSam } from './basic';
 import { syncMessages, syncTigers } from './admin';
+import { mlb } from './sports';
 
 export const commandRegistry: {
 	[command: string]: (env: Env, args: string[], triggerMessage: GroupMeMessage) => Promise<void>;
@@ -16,6 +17,7 @@ export const commandRegistry: {
 	remindme: remindme,
 	reminders: reminders,
 	synctigers: syncTigers,
+	mlb: mlb,
 };
 
 export const helpMessage = `Command List:

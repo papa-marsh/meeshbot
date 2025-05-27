@@ -12,6 +12,8 @@ export interface Env {
 	GROUPME_TOKEN: string;
 	ANTHROPIC_API_KEY: string;
 	BALLDONTLIE_API_KEY: string;
+	SPORTS_MCP_SERVER_URL: string;
+	SPORTS_MCP_TOKEN: string;
 	TESTING_GROUP_ID: string;
 }
 

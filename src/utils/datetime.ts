@@ -1,5 +1,5 @@
 import { Env } from '../index';
-import { getAnthropicResponse } from '../integrations/ai';
+import { ANTHROPIC_COMPUTE_MODEL, getAnthropicResponse } from '../integrations/ai';
 
 export const easternFormatter = new Intl.DateTimeFormat('en-US', {
 	timeZone: 'America/New_York',
@@ -35,7 +35,7 @@ export async function parseDateTime(env: Env, timeString: string): Promise<Date 
 		`;
 
 	try {
-		const result = await getAnthropicResponse(env, prompt);
+		const result = await getAnthropicResponse(env, prompt, ANTHROPIC_COMPUTE_MODEL, 0.1);
 		console.log(`Parsing datetime. Received ${result} for timeString: "${timeString}"`);
 		if (!result) return null;
 
