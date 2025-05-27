@@ -72,6 +72,7 @@ export async function getAnthropicResponse(
 
 export async function getSportsMcpResponse(
 	env: Env,
+	system: string,
 	prompt: string,
 	model: string = ANTHROPIC_MODEL,
 	temperature: number = 0.3,
@@ -89,6 +90,7 @@ export async function getSportsMcpResponse(
 			model: model,
 			max_tokens: max_tokens,
 			temperature: temperature,
+			system: system,
 			messages: [{ role: 'user', content: prompt }],
 			// @ts-expect-error unsupported in SDK for now
 			mcp_servers: [
