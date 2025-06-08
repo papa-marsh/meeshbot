@@ -3,7 +3,7 @@ import { easternFormatter, parseDateTime } from '../utils/datetime';
 import { GroupMeMessage, Mention, sendMessage } from '../integrations/groupMe';
 import { Reminder } from '../integrations/db';
 
-export async function remindme(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+export async function remindMe(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {
 	if (args.length < 2) {
 		await sendMessage(env, triggerMessage.group_id, 'You need to tell me when to remind you, idiot');
 		return;

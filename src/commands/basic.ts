@@ -11,8 +11,12 @@ export async function help(env: Env, _args: string[], triggerMessage: GroupMeMes
 	await sendMessage(env, triggerMessage.group_id, helpMessage);
 }
 
-export async function whatissam(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+export async function whatIsSam(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
 	await sendMessage(env, triggerMessage.group_id, 'idk sounds like a bitch');
+}
+
+export async function whatIsJeff(env: Env, _args: string[], triggerMessage: GroupMeMessage): Promise<void> {
+	await sendMessage(env, triggerMessage.group_id, 'Oh, you mean Brad?');
 }
 
 export async function roll(env: Env, args: string[], triggerMessage: GroupMeMessage): Promise<void> {

@@ -1,7 +1,7 @@
 import { Env } from '../index';
 import { GroupMeMessage } from '../integrations/groupMe';
-import { reminders, remindme } from './reminders';
-import { help, ping, roll, scoreboard, whatissam as whatIsSam } from './basic';
+import { reminders, remindMe } from './reminders';
+import { help, ping, roll, scoreboard, whatIsSam, whatIsJeff } from './basic';
 import { syncMessages, syncTigers } from './admin';
 import { mlb } from './sports';
 
@@ -11,10 +11,11 @@ export const commandRegistry: {
 	ping: ping,
 	help: help,
 	whatissam: whatIsSam,
+	whatisjeff: whatIsJeff,
 	roll: roll,
 	scoreboard: scoreboard,
 	syncmessages: syncMessages,
-	remindme: remindme,
+	remindme: remindMe,
 	reminders: reminders,
 	synctigers: syncTigers,
 	mlb: mlb,

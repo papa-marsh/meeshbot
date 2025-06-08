@@ -12,7 +12,6 @@ export async function mlb(env: Env, _args: string[], triggerMessage: GroupMeMess
 
 	const prompt = triggerMessage.text;
 	const responseList = await getSportsMcpResponse(env, SPORTS_MCP_INSTRUCTIONS, prompt);
-	console.log('RIGHT HERE', responseList);
 	if (!responseList) {
 		await sendMessage(env, triggerMessage.group_id, 'Something went wrong :(');
 		return;
