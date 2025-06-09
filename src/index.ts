@@ -25,39 +25,19 @@ export interface ScheduledController {
 
 export default {
 	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-		if (request.method !== 'POST') {
-			return new Response('Method Not Allowed', { status: 405 });
+		const url = new URL(request.url);
+		const path = url.pathname;
+
+		switch (path) {
+			case '/groupme-webhook':
+				return handleGroupMeWebhook(request, env);
+			case '/mcp':
+				return handleMCP(request, env);
+			default:
+				return new Response('Not Found', { status: 404 });
 		}
-
-		let triggerMessage: GroupMeMessage;
-		try {
-			triggerMessage = await request.json();
-			console.log(`${triggerMessage.name.split(' ')[0]}: ${triggerMessage.text}`, triggerMessage);
-		} catch {
-			return new Response('Bad Request: Invalid JSON', { status: 400 });
-		}
-
-		await syncMessageToDb(env, triggerMessage);
-
-		// Process a slash command or chat prompt
-		if (triggerMessage.text.startsWith('/')) {
-			const args = triggerMessage.text.trim().split(/\s+/);
-			const command = args[0].slice(1).toLowerCase();
-
-			const commandHandler = commandRegistry[command];
-			if (commandHandler) {
-				await commandHandler(env, args, triggerMessage);
-			} else {
-				await sendMessage(env, triggerMessage.group_id, "That's not a command IDIOT");
-			}
-		} else if (triggerMessage.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
-			await respondWithAi(env, triggerMessage);
-		}
-
-		return new Response('Success', { status: 200 });
 	},
 
-	// Handle cron trigger events
 	async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
 		console.log(`Scheduled job running at ${new Date().toISOString()} with cron: ${controller.cron}`);
 
@@ -72,3 +52,69 @@ export default {
 		}
 	},
 } satisfies ExportedHandler<Env>;
+
+async function handleGroupMeWebhook(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method Not Allowed', { status: 405 });
+	}
+
+	let triggerMessage: GroupMeMessage;
+	try {
+		triggerMessage = await request.json();
+		console.log(`${triggerMessage.name.split(' ')[0]}: ${triggerMessage.text}`, triggerMessage);
+	} catch {
+		return new Response('Bad Request: Invalid JSON', { status: 400 });
+	}
+
+	await syncMessageToDb(env, triggerMessage);
+
+	// Process a slash command or chat prompt
+	if (triggerMessage.text.startsWith('/')) {
+		const args = triggerMessage.text.trim().split(/\s+/);
+		const command = args[0].slice(1).toLowerCase();
+
+		const commandHandler = commandRegistry[command];
+		if (commandHandler) {
+			await commandHandler(env, args, triggerMessage);
+		} else {
+			await sendMessage(env, triggerMessage.group_id, "That's not a command IDIOT");
+		}
+	} else if (triggerMessage.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
+		await respondWithAi(env, triggerMessage);
+	}
+
+	return new Response('Success', { status: 200 });
+}
+
+async function handleMCP(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method Not Allowed', { status: 405 });
+	}
+
+	let triggerMessage: GroupMeMessage;
+	try {
+		triggerMessage = await request.json();
+		console.log(`${triggerMessage.name.split(' ')[0]}: ${triggerMessage.text}`, triggerMessage);
+	} catch {
+		return new Response('Bad Request: Invalid JSON', { status: 400 });
+	}
+
+	await syncMessageToDb(env, triggerMessage);
+
+	// Process a slash command or chat prompt
+	if (triggerMessage.text.startsWith('/')) {
+		const args = triggerMessage.text.trim().split(/\s+/);
+		const command = args[0].slice(1).toLowerCase();
+
+		const commandHandler = commandRegistry[command];
+		if (commandHandler) {
+			await commandHandler(env, args, triggerMessage);
+		} else {
+			await sendMessage(env, triggerMessage.group_id, "That's not a command IDIOT");
+		}
+	} else if (triggerMessage.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
+		await respondWithAi(env, triggerMessage);
+	}
+
+	return new Response('Success', { status: 200 });
+}
