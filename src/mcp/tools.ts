@@ -1,3 +1,1 @@
-export async function placeholder(args: { ... }) {
-    
-}
+export async function placeholder(_args: null) {}

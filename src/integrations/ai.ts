@@ -96,12 +96,12 @@ export async function getAnthropicMcpResponse(
 			messages: [{ role: 'user', content: prompt }],
 			// @ts-expect-error unsupported in SDK for now
 			mcp_servers: [
-				// {
-				// 	type: 'url',
-				// 	url: env.MEESHBOT_MCP_SERVER_URL,
-				// 	name: 'meeshbot-mcp',
-				// 	authorization_token: env.MEESHBOT_MCP_TOKEN,
-				// },
+				{
+					type: 'url',
+					url: env.MEESHBOT_MCP_SERVER_URL,
+					name: 'meeshbot-mcp',
+					authorization_token: env.MEESHBOT_MCP_TOKEN,
+				},
 				{
 					type: 'url',
 					url: env.SPORTS_MCP_SERVER_URL,

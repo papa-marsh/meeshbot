@@ -31,4 +31,6 @@ export const helpMessage = `Command List:
 
 /remindme: Sets a reminder. Add a custom message with a dash. (eg. "/remindme Friday at noon - Remember the meeting").
 
-/reminders: Shows upcoming reminders.`;
+/reminders: Shows upcoming reminders.
+
+/mlb: Ask anything about MLB games.`;

@@ -11,7 +11,7 @@ export async function respondWithAi(env: Env, message: GroupMeMessage): Promise<
 	const text = `${firstName}: ${message.text}\n\n----------${messageHistory}`;
 
 	const response = await getAnthropicMcpResponse(env, staticAIContext, text);
-	const responseList = response ?? 'Received an invalid response from the robot overlords :(';
+	const responseList = response ?? ['Received an invalid response from the robot overlords :('];
 
 	if (!responseList) {
 		await sendMessage(env, message.group_id, 'Something went wrong :(');
