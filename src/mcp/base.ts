@@ -2,6 +2,12 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { Env } from '../index';
 import { placeholder } from './tools';
 
+// TODO:
+//  - MCP auth
+//  - Build message lookup MCP tools
+//  - Set up MCP tools for existing commands
+//  - Make @meeshbot trigger logic smarter
+
 export const TOOLS: Tool[] = [
 	{
 		name: 'placeholder',
@@ -134,7 +140,7 @@ export default {
 		}
 
 		// Root endpoint - return server info
-		if (url.pathname === '/') {
+		if (url.pathname === '/mcp') {
 			return new Response(
 				JSON.stringify({
 					name: 'meeshbot-mcp',

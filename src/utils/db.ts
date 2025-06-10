@@ -23,15 +23,47 @@ export async function getBotId(env: Env, groupId: string): Promise<string> {
 	return result.bot_id;
 }
 
-export async function getMessageHistory(env: Env, groupId: string): Promise<ChatMessage[]> {
-	const { results } = await env.DB.prepare(
-		`SELECT chat_message.timestamp, user.name, chat_message.text 
-			FROM chat_message 
-			JOIN user ON chat_message.sender_id = user.id 
-			WHERE chat_message.group_id = ? 
-			ORDER BY chat_message.timestamp ASC;`,
-	)
-		.bind(groupId)
+export interface MessageHistoryFilters {
+	groupId?: string;
+	userId?: string;
+	before?: Date;
+	after?: Date;
+}
+
+export async function getMessageHistory(env: Env, filters: MessageHistoryFilters = {}): Promise<ChatMessage[]> {
+	const conditions: string[] = [];
+	const bindings: (string | number)[] = [];
+
+	if (filters.groupId) {
+		conditions.push('chat_message.group_id = ?');
+		bindings.push(filters.groupId);
+	}
+
+	if (filters.userId) {
+		conditions.push('chat_message.sender_id = ?');
+		bindings.push(filters.userId);
+	}
+
+	if (filters.before) {
+		conditions.push('chat_message.timestamp < ?');
+		bindings.push(filters.before.toISOString().replace('T', ' ').split('.')[0]);
+	}
+
+	if (filters.after) {
+		conditions.push('chat_message.timestamp > ?');
+		bindings.push(filters.after.toISOString().replace('T', ' ').split('.')[0]);
+	}
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+	const query = `SELECT chat_message.timestamp, user.name, chat_message.text 
+		FROM chat_message 
+		JOIN user ON chat_message.sender_id = user.id 
+		${whereClause}
+		ORDER BY chat_message.timestamp ASC;`;
+
+	const { results } = await env.DB.prepare(query)
+		.bind(...bindings)
 		.all<ChatMessage>();
 
 	return results.map((row) => ({

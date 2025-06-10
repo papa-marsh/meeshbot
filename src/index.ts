@@ -8,13 +8,15 @@ import { syncUpcomingGames } from './integrations/mlb';
 
 export interface Env {
 	DB: D1Database;
-	OPENAI_API_KEY: string;
 	GROUPME_TOKEN: string;
+	TESTING_GROUP_ID: string;
+	OPENAI_API_KEY: string;
 	ANTHROPIC_API_KEY: string;
 	BALLDONTLIE_API_KEY: string;
 	SPORTS_MCP_SERVER_URL: string;
 	SPORTS_MCP_TOKEN: string;
-	TESTING_GROUP_ID: string;
+	MEESHBOT_MCP_SERVER_URL: string;
+	MEESHBOT_MCP_TOKEN: string;
 }
 
 export interface ScheduledController {
@@ -32,7 +34,7 @@ export default {
 			case '/groupme-webhook':
 				return handleGroupMeWebhook(request, env);
 			case '/mcp':
-				return handleMCP(request, env);
+				return handleMCPRequest(request, env);
 			default:
 				return new Response('Not Found', { status: 404 });
 		}
@@ -79,14 +81,14 @@ async function handleGroupMeWebhook(request: Request, env: Env): Promise<Respons
 		} else {
 			await sendMessage(env, triggerMessage.group_id, "That's not a command IDIOT");
 		}
-	} else if (triggerMessage.text.toLowerCase().includes('@meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
+	} else if (triggerMessage.text.toLowerCase().includes('meeshbot') && !botUserIds.includes(triggerMessage.user_id)) {
 		await respondWithAi(env, triggerMessage);
 	}
 
 	return new Response('Success', { status: 200 });
 }
 
-async function handleMCP(request: Request, env: Env): Promise<Response> {
+async function handleMCPRequest(request: Request, env: Env): Promise<Response> {
 	if (request.method !== 'POST') {
 		return new Response('Method Not Allowed', { status: 405 });
 	}
