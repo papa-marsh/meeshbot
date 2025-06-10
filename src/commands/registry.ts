@@ -3,7 +3,6 @@ import { GroupMeMessage } from '../integrations/groupMe';
 import { reminders, remindMe } from './reminders';
 import { help, ping, roll, scoreboard, whatIsSam, whatIsJeff } from './basic';
 import { syncMessages, syncTigers } from './admin';
-import { mlb } from './sports';
 
 export const commandRegistry: {
 	[command: string]: (env: Env, args: string[], triggerMessage: GroupMeMessage) => Promise<void>;
@@ -18,7 +17,6 @@ export const commandRegistry: {
 	remindme: remindMe,
 	reminders: reminders,
 	synctigers: syncTigers,
-	mlb: mlb,
 };
 
 export const helpMessage = `Command List:
@@ -31,6 +29,4 @@ export const helpMessage = `Command List:
 
 /remindme: Sets a reminder. Add a custom message with a dash. (eg. "/remindme Friday at noon - Remember the meeting").
 
-/reminders: Shows upcoming reminders.
-
-/mlb: Ask anything about MLB games.`;
+/reminders: Shows upcoming reminders.`;
