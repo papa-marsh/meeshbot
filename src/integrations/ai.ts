@@ -74,8 +74,8 @@ export async function getAnthropicResponse(
 
 export async function getAnthropicMcpResponse(
 	env: Env,
-	system: string,
 	prompt: string,
+	context: string,
 	model: string = ANTHROPIC_MODEL,
 	temperature: number = 0.3,
 	max_tokens: number = 1024,
@@ -92,7 +92,7 @@ export async function getAnthropicMcpResponse(
 			model: model,
 			max_tokens: max_tokens,
 			temperature: temperature,
-			system: system,
+			system: context,
 			messages: [{ role: 'user', content: prompt }],
 			// @ts-expect-error unsupported in SDK for now
 			mcp_servers: [
@@ -118,7 +118,8 @@ export async function getAnthropicMcpResponse(
 		}
 		return output;
 	} catch (err) {
-		console.log('Failed to get a valid response from Anthropic MCP', err);
+		console.log('Failed to get a valid response from Anthropic MCP');
+		console.log('Error details:', JSON.stringify(err, null, 2));
 		return null;
 	}
 }
