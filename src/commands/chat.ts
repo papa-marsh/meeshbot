@@ -5,6 +5,8 @@ import { getAnthropicMcpResponse } from '../integrations/ai';
 import { easternFormatter } from '../utils/datetime';
 import { GroupMeMessage, sendMessage } from '../integrations/groupMe';
 
+const CHAT_HISTORY_CONTEXT_WINDOW = 48;
+
 export async function respondWithAi(env: Env, message: GroupMeMessage): Promise<void> {
 	const firstName = message.name.split(' ')[0];
 	const messageHistory = await buildMessageHistory(env, message);
@@ -25,7 +27,7 @@ export async function respondWithAi(env: Env, message: GroupMeMessage): Promise<
 async function buildMessageHistory(env: Env, message: GroupMeMessage): Promise<string> {
 	const now = new Date();
 	const nowFormatted = easternFormatter.format(now);
-	const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+	const fortyEightHoursAgo = new Date(now.getTime() - CHAT_HISTORY_CONTEXT_WINDOW * 60 * 60 * 1000);
 
 	const messageHistory = await getMessageHistory(env, {
 		groupId: message.group_id,
@@ -40,7 +42,7 @@ async function buildMessageHistory(env: Env, message: GroupMeMessage): Promise<s
 		.join('\n');
 
 	const historyIntro = `
-		The following is group chat message history over the last 48 hours, included for context. 
+		The following is group chat message history over the last ${CHAT_HISTORY_CONTEXT_WINDOW} hours, included for context. 
 		The timestamp of the message to which you're responding is ${nowFormatted}.\n\n`;
 	return historyIntro + messageHistoryString;
 }

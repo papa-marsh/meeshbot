@@ -87,6 +87,23 @@ export async function getAnthropicMcpResponse(
 				'anthropic-beta': 'mcp-client-2025-04-04',
 			},
 		});
+		const messageText = prompt.split('\n\n')[0]; // TODO: Remove conditional once 500s are gone
+		const mcpServers = messageText.includes('mcp')
+			? [
+					// {
+					// 	type: 'url',
+					// 	url: env.MEESHBOT_MCP_SERVER_URL,
+					// 	name: 'meeshbot-mcp',
+					// 	authorization_token: env.MEESHBOT_MCP_TOKEN,
+					// },
+					{
+						type: 'url',
+						url: env.SPORTS_MCP_SERVER_URL,
+						name: 'sports-mcp',
+						authorization_token: env.SPORTS_MCP_TOKEN,
+					},
+				]
+			: [];
 
 		const response: AnthropicResponse = await client.messages.create({
 			model: model,
@@ -95,20 +112,7 @@ export async function getAnthropicMcpResponse(
 			system: context,
 			messages: [{ role: 'user', content: prompt }],
 			// @ts-expect-error unsupported in SDK for now
-			mcp_servers: [
-				// 	{
-				// 		type: 'url',
-				// 		url: env.MEESHBOT_MCP_SERVER_URL,
-				// 		name: 'meeshbot-mcp',
-				// 		authorization_token: env.MEESHBOT_MCP_TOKEN,
-				// 	},
-				{
-					type: 'url',
-					url: env.SPORTS_MCP_SERVER_URL,
-					name: 'sports-mcp',
-					authorization_token: env.SPORTS_MCP_TOKEN,
-				},
-			],
+			mcp_servers: mcpServers,
 		});
 		let output = [];
 		for (const content of response.content) {
