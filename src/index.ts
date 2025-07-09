@@ -5,7 +5,6 @@ import { respondWithAi } from './commands/chat';
 import { checkAndSendDueReminders } from './commands/reminders';
 import { syncMessageToDb } from './utils/db';
 import { syncUpcomingGames } from './integrations/mlb';
-import { handleMCPRequest } from './mcp/base';
 
 export interface Env {
 	DB: D1Database;
@@ -16,8 +15,6 @@ export interface Env {
 	BALLDONTLIE_API_KEY: string;
 	SPORTS_MCP_SERVER_URL: string;
 	SPORTS_MCP_TOKEN: string;
-	MEESHBOT_MCP_SERVER_URL: string;
-	MEESHBOT_MCP_TOKEN: string;
 }
 
 export interface ScheduledController {
@@ -34,8 +31,6 @@ export default {
 		switch (path) {
 			case '/groupme-webhook':
 				return handleGroupMeWebhook(request, env, ctx);
-			case '/mcp':
-				return handleMCPRequest(request, env, ctx);
 			default:
 				return new Response('Not Found', { status: 404 });
 		}

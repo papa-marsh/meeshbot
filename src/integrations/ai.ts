@@ -87,8 +87,7 @@ export async function getAnthropicMcpResponse(
 				'anthropic-beta': 'mcp-client-2025-04-04',
 			},
 		});
-		const messageText = prompt.split('\n\n')[0]; // TODO: Remove conditional once 500s are gone
-		const mcpServers = messageText.includes('mcp')
+		const mcpServers = prompt.split('\n\n')[0].includes('mcp') // TODO: Remove conditional once 500s are gone
 			? [
 					// {
 					// 	type: 'url',
