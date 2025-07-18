@@ -89,12 +89,6 @@ export async function getAnthropicMcpResponse(
 		});
 		const mcpServers = prompt.split('\n\n')[0].includes('mcp') // TODO: Remove conditional once 500s are gone
 			? [
-					// {
-					// 	type: 'url',
-					// 	url: env.MEESHBOT_MCP_SERVER_URL,
-					// 	name: 'meeshbot-mcp',
-					// 	authorization_token: env.MEESHBOT_MCP_TOKEN,
-					// },
 					{
 						type: 'url',
 						url: env.SPORTS_MCP_SERVER_URL,
