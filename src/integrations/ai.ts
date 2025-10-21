@@ -3,7 +3,7 @@ import { OpenAI } from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const OPENAI_MODEL = 'gpt-4.1-nano';
-export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
+export const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 export const ANTHROPIC_COMPUTE_MODEL = 'claude-opus-4-20250514';
 
 interface AnthropicResponse {
