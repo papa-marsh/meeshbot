@@ -33,7 +33,7 @@ export async function syncMessages(env: Env, args: string[], triggerMessage: Gro
 		while (messages.length) {
 			attempts += 1;
 			if (attempts > maxAttempts) {
-				await sendMessage(env, triggerMessage.group_id, `/sync ${groupId} ${beforeId} ${total}`);
+				await sendMessage(env, triggerMessage.group_id, `/syncmessages ${groupId} ${beforeId} ${total}`);
 				return;
 			}
 			for (const messageTemp of messages) {
