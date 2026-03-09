@@ -1,4 +1,7 @@
 .cache
+.claude
+.venv
+.opencode
 .env
 .vscode/
 .DS_Store
