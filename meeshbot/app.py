@@ -15,9 +15,10 @@ def require_auth_token(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-app = FastAPI(dependencies=[Depends(require_auth_token)])
+app = FastAPI()
 
 
+# @app.get("/", dependencies=[Depends(require_auth_token)])
 @app.get("/")
 def root() -> dict[str, str]:
     return {"message": "Hello, world!"}
