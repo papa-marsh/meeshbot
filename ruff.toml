@@ -1,0 +1,29 @@
+cache-dir = ".cache/ruff"
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = [
+    "F",    # Pyflakes - basic Python errors
+    "E",    # pycodestyle errors - PEP 8 violations
+    "W",    # pycodestyle warnings - PEP 8 style issues
+    "I",    # isort - import sorting
+    "PGH",  # pygrep-hooks - miscellaneous linting rules
+    "UP",   # pyupgrade - modernize Python code
+    "S",    # flake8-bandit - security issues
+    "C4",   # flake8-comprehensions - list/dict comprehension improvements
+    "DJ",   # flake8-django - Django-specific rules
+    "INP",  # flake8-no-pep420 - require __init__.py files
+    "T20",  # flake8-print - detect print statements
+    "SIM",  # flake8-simplify - code simplification suggestions
+    "ARG",  # flake8-unused-arguments - unused function arguments
+    "PTH",  # flake8-use-pathlib - prefer pathlib over os.path
+    "FURB", # refurb - modernization and performance improvements
+    "RUF",  # Ruff-specific rules
+]
+[lint.per-file-ignores]
+"**/tests/**.py" = [
+    "ARG001", # Unused Arg
+    "E501",   # Line length
+    "S101",   # Assert statements
+]
