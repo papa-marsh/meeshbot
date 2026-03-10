@@ -1,3 +1,3 @@
-# meeshbot-python
+# meeshbot
 
 TODO

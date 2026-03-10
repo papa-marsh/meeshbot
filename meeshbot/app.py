@@ -1,28 +1,23 @@
-import os
-
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from structlog.stdlib import get_logger
 
-AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
-
-
-def require_auth_token(request: Request) -> None:
-    """Reject requests that are missing or present an invalid X-Auth-Token header."""
-    token = request.headers.get("X-Auth-Token", "")
-    if not token:
-        raise HTTPException(status_code=401, detail="X-Auth-Token header required")
-    if token != AUTH_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+log = get_logger()
 
 app = FastAPI()
 
 
-# @app.get("/", dependencies=[Depends(require_auth_token)])
 @app.get("/")
 def root() -> dict[str, str]:
     return {"message": "Hello, world!"}
 
 
+@app.post("/groupme-webhook")
+def groupme_webhook(request: Request, body: dict) -> dict[str, str]:
+    log.info(f"Body: {body}")
+    log.info(f"Headers: {dict(request.headers)}")
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
