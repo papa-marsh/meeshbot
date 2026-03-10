@@ -9,7 +9,7 @@ log = get_logger()
 app = FastAPI()
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root() -> dict[str, str]:
     return {"message": "Hello, world!"}
 
