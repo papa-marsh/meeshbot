@@ -1,6 +1,6 @@
 """Database utilities for GroupMe integration."""
 
-from meeshbot.integrations.groupme.types import GroupMeMessage
+from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 
 def get_bot_id(group_id: str) -> str:
@@ -13,6 +13,6 @@ def get_group_ids() -> list[str]:
     raise NotImplementedError
 
 
-def sync_message_to_db(message: GroupMeMessage) -> None:
+def sync_message_to_db(message: GroupMeWebhookPayload) -> None:
     """Persist a GroupMe message to the database."""
     raise NotImplementedError

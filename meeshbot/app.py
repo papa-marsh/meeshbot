@@ -1,8 +1,9 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Response
 from structlog.stdlib import get_logger
 
 from meeshbot.config import GROUPME_WEBHOOK_TOKEN
+from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 log = get_logger()
 
@@ -10,22 +11,17 @@ app = FastAPI()
 
 
 @app.api_route("/", methods=["GET", "HEAD"])
-def root() -> dict[str, str]:
-    return {"message": "Hello, world!"}
+def root() -> Response:
+    return Response(status_code=204)
 
 
 @app.post("/groupme-webhook")
-def groupme_webhook(
-    request: Request,
-    body: dict,
-    token: str = Query(default=""),
-) -> dict[str, str]:
+def groupme_webhook(body: GroupMeWebhookPayload, token: str = Query(default="")) -> Response:
     if token != GROUPME_WEBHOOK_TOKEN:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    log.info(f"Body: {body}")
-    log.info(f"Headers: {dict(request.headers)}")
-    return {"status": "ok"}
+    log.info(f"Message from {body.name}: {body.text}")
+    return Response(status_code=204)
 
 
 if __name__ == "__main__":
