@@ -5,6 +5,9 @@ GROUPME_TOKEN = os.environ.get("GROUPME_TOKEN", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 BALLDONTLIE_API_KEY = os.environ.get("BALLDONTLIE_API_KEY", "")
 
+GROUPME_WEBHOOK_TOKEN = os.environ.get("GROUPME_WEBHOOK_TOKEN", "")
+TESTING_GROUP_ID = os.environ.get("TESTING_GROUP_ID", "")
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
