@@ -27,3 +27,7 @@ select = [
     "E501",   # Line length
     "S101",   # Assert statements
 ]
+
+"shell.py" = [
+    "F401", # Unused Import
+]

@@ -47,3 +47,40 @@ class GroupMeWebhookPayload(BaseModel):
     group_id: str
     avatar_url: str | None = None
     attachments: list[MessageAttachment] = []
+
+
+class Member(BaseModel):
+    id: str
+    user_id: str
+    nickname: str
+    muted: bool
+    image_url: str | None = None
+    autokicked: bool
+    app_installed: bool | None = None
+
+
+class Group(BaseModel):
+    id: str
+    name: str
+    type: str
+    description: str
+    image_url: str | None = None
+    creator_user_id: str
+    created_at: int
+    updated_at: int
+    members: list[Member]
+    share_url: str | None = None
+
+
+class Message(BaseModel):
+    id: str
+    source_guid: str
+    created_at: int
+    user_id: str
+    group_id: str
+    name: str
+    avatar_url: str | None = None
+    text: str | None = None
+    system: bool
+    favorited_by: list[str] = []
+    attachments: list[MessageAttachment] = []
