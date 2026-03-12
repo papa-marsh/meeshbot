@@ -1,13 +1,17 @@
 from collections.abc import Callable
 
-from meeshbot.commands import ping
+from meeshbot.commands import help, ping, roll, whatisjeff, whatissam
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 CommandFuncT = Callable[[GroupMeWebhookPayload], None]
 
 COMMAND_REGISTRY: dict[str, CommandFuncT] = {
+    "/help": help,
     "/ping": ping,
+    "/roll": roll,
+    "/whatissam": whatissam,
+    "/whatisjeff": whatisjeff,
 }
 
 

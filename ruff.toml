@@ -21,6 +21,11 @@ select = [
     "FURB", # refurb - modernization and performance improvements
     "RUF",  # Ruff-specific rules
 ]
+
+ignore = [
+    "S311", # Standard pseudo-random generators
+]
+
 [lint.per-file-ignores]
 "**/tests/**.py" = [
     "ARG001", # Unused arg
