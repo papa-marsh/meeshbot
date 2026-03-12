@@ -23,9 +23,13 @@ select = [
 ]
 [lint.per-file-ignores]
 "**/tests/**.py" = [
-    "ARG001", # Unused Arg
+    "ARG001", # Unused arg
     "E501",   # Line length
     "S101",   # Assert statements
+]
+
+"app.py" = [
+    "S104", # Hardcoded bind all interfaces
 ]
 
 "shell.py" = [
