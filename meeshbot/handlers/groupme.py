@@ -8,9 +8,7 @@ def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
 
     if webhook.text[0] == "/":
         message_parts = webhook.text.split(" ")
-        command_func = get_command_func(message_parts[0])
+        command = message_parts[0]
+        func = get_command_func(command)
 
-        if command_func is None:
-            return
-
-        command_func(webhook)
+        func(webhook)

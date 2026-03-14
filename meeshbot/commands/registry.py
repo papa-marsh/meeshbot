@@ -15,10 +15,8 @@ COMMAND_REGISTRY: dict[str, CommandFuncT] = {
 }
 
 
-def get_command_func(command: str) -> CommandFuncT | None:
-    func = COMMAND_REGISTRY.get(command, handle_invalid_command)
-
-    return func
+def get_command_func(command: str) -> CommandFuncT:
+    return COMMAND_REGISTRY.get(command, handle_invalid_command)
 
 
 def handle_invalid_command(webhook: GroupMeWebhookPayload) -> None:
