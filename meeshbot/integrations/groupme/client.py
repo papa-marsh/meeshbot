@@ -1,11 +1,11 @@
 from http import HTTPMethod
 from typing import Any
 
-import requests
+import httpx
 from structlog.stdlib import get_logger
 
 from meeshbot.config import GROUPME_TOKEN
-from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
+from meeshbot.integrations.groupme.db import get_bot_id
 from meeshbot.integrations.groupme.types import Group, Message, MessageAttachment
 
 BASE_URL = "https://api.groupme.com/v3"
@@ -17,20 +17,21 @@ class GroupMeClient:
     def __init__(self, api_token: str | None = None) -> None:
         self.api_token = api_token or GROUPME_TOKEN
 
-    @classmethod
-    def get_bot_id(cls, group_id: str) -> str:
-        return BOTS_BY_GROUP[group_id]
-
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> list | dict:
+    async def _get(self, path: str, params: dict[str, Any] | None = None) -> list | dict:
         url = f"{BASE_URL}{path}"
-        params = {"token": self.api_token, **(params or {})}
+        request_params = {"token": self.api_token, **(params or {})}
 
         log.debug("Sending request to GroupMe", method=HTTPMethod.GET, url=url)
-        response = requests.get(url, params, timeout=10)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                params=request_params,
+                timeout=10,
+            )
         log.debug(
             "Received response from GroupMe",
             status=response.status_code,
-            url=response.url.replace(GROUPME_TOKEN, "<token>"),
+            url=str(response.url).replace(GROUPME_TOKEN, "<token>"),
         )
 
         response.raise_for_status()
@@ -41,16 +42,22 @@ class GroupMeClient:
 
         return data
 
-    def _post(self, path: str, json: dict[str, Any] | None = None) -> dict | None:
+    async def _post(self, path: str, json: dict[str, Any] | None = None) -> dict | None:
         url = f"{BASE_URL}{path}"
-        params = {"token": self.api_token}
+        request_params = {"token": self.api_token}
 
         log.debug("Sending request to GroupMe", method=HTTPMethod.POST, url=url)
-        response = requests.post(url, params=params, json=json, timeout=10)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                params=request_params,
+                json=json,
+                timeout=10,
+            )
         log.debug(
             "Received response from GroupMe",
             status=response.status_code,
-            url=response.url.replace(GROUPME_TOKEN, "<token>"),
+            url=str(response.url).replace(GROUPME_TOKEN, "<token>"),
         )
 
         response.raise_for_status()
@@ -64,36 +71,36 @@ class GroupMeClient:
 
         return data
 
-    def post_message(
+    async def post_message(
         self,
         group_id: str,
         text: str,
         attachments: list[MessageAttachment] | None = None,
     ) -> None:
         payload: dict[str, Any] = {
-            "bot_id": self.get_bot_id(group_id),
+            "bot_id": await get_bot_id(group_id),
             "text": text,
         }
         if attachments:
             payload["attachments"] = [a.model_dump() for a in attachments]
 
-        self._post("/bots/post", json=payload)
+        await self._post("/bots/post", json=payload)
 
-    def get_groups(self, page: int = 1, per_page: int = 100) -> list[Group]:
+    async def get_groups(self, page: int = 1, per_page: int = 100) -> list[Group]:
         params = {
             "page": page,
             "per_page": per_page,
         }
-        data = self._get("/groups", params)
+        data = await self._get("/groups", params)
 
         return [Group.model_validate(g) for g in data]
 
-    def get_group(self, group_id: str) -> Group:
-        data = self._get(f"/groups/{group_id}")
+    async def get_group(self, group_id: str) -> Group:
+        data = await self._get(f"/groups/{group_id}")
 
         return Group.model_validate(data)
 
-    def get_messages(
+    async def get_messages(
         self,
         group_id: str,
         before_id: str | None = None,
@@ -110,7 +117,7 @@ class GroupMeClient:
         if after_id is not None:
             params["after_id"] = after_id
 
-        data = self._get(f"/groups/{group_id}/messages", params=params)
+        data = await self._get(f"/groups/{group_id}/messages", params=params)
         if not isinstance(data, dict):
             raise TypeError
 

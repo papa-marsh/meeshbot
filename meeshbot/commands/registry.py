@@ -1,10 +1,10 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from meeshbot.commands import help, ping, roll, whatisjeff, whatissam
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
-CommandFuncT = Callable[[GroupMeWebhookPayload], None]
+CommandFuncT = Callable[[GroupMeWebhookPayload], Awaitable[None]]
 
 COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/help": help,
@@ -19,6 +19,8 @@ def get_command_func(command: str) -> CommandFuncT:
     return COMMAND_REGISTRY.get(command, handle_invalid_command)
 
 
-def handle_invalid_command(webhook: GroupMeWebhookPayload) -> None:
-    text = "That's not a command IDIOT"
-    GroupMeClient().post_message(group_id=webhook.group_id, text=text)
+async def handle_invalid_command(webhook: GroupMeWebhookPayload) -> None:
+    await GroupMeClient().post_message(
+        group_id=webhook.group_id,
+        text="That's not a command IDIOT",
+    )

@@ -8,5 +8,8 @@ HELP_MESSAGE = """Command List:
 /roll: Rolls any number of any-sided dice (eg. 4d20 rolls four 20-sided dice)."""
 
 
-def help(webhook: GroupMeWebhookPayload) -> None:
-    GroupMeClient().post_message(group_id=webhook.group_id, text=HELP_MESSAGE)
+async def help(webhook: GroupMeWebhookPayload) -> None:
+    await GroupMeClient().post_message(
+        group_id=webhook.group_id,
+        text=HELP_MESSAGE,
+    )

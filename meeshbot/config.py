@@ -9,6 +9,5 @@ GROUPME_WEBHOOK_TOKEN = os.environ.get("GROUPME_WEBHOOK_TOKEN", "")
 TESTING_GROUP_ID = os.environ.get("TESTING_GROUP_ID", "")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 TIMEZONE = ZoneInfo(os.environ.get("TIMEZONE", "America/New_York"))

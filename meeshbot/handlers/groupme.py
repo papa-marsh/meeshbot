@@ -1,8 +1,11 @@
 from meeshbot.commands.registry import get_command_func
+from meeshbot.integrations.groupme.db import sync_message_to_db
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 
-def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
+async def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
+    await sync_message_to_db(webhook)
+
     if webhook.text is None:
         return
 
@@ -11,4 +14,4 @@ def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
         command = message_parts[0]
         func = get_command_func(command)
 
-        func(webhook)
+        await func(webhook)
