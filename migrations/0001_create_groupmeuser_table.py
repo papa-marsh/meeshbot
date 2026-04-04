@@ -1,6 +1,6 @@
 """Auto-generated migration.
 
-Created: 2026-03-17 09:20:21
+Created: 2026-04-04 19:11:39
 """
 
 depends_on = None
@@ -8,6 +8,51 @@ depends_on = None
 
 def upgrade(ctx):
     """Apply migration."""
+    ctx.create_table(
+        "groupmeuser",
+        fields=[
+            {
+                'name': 'id',
+                'python_type': 'str',
+                'db_type': None,
+                'nullable': False,
+                'primary_key': True,
+                'unique': False,
+                'default': None,
+                'auto_increment': False
+            },
+            {
+                'name': 'name',
+                'python_type': 'str',
+                'db_type': None,
+                'nullable': False,
+                'primary_key': False,
+                'unique': False,
+                'default': None,
+                'auto_increment': False
+            },
+            {
+                'name': 'image_url',
+                'python_type': 'str',
+                'db_type': None,
+                'nullable': True,
+                'primary_key': False,
+                'unique': False,
+                'default': None,
+                'auto_increment': False
+            },
+            {
+                'name': 'muted',
+                'python_type': 'bool',
+                'db_type': None,
+                'nullable': False,
+                'primary_key': False,
+                'unique': False,
+                'default': 'FALSE',
+                'auto_increment': False
+            }
+        ],
+    )
     ctx.create_table(
         "groupmegroup",
         fields=[
@@ -43,18 +88,8 @@ def upgrade(ctx):
             },
             {
                 'name': 'created_at',
-                'python_type': 'int',
+                'python_type': 'datetime',
                 'db_type': None,
-                'nullable': False,
-                'primary_key': False,
-                'unique': False,
-                'default': None,
-                'auto_increment': False
-            },
-            {
-                'name': 'members',
-                'python_type': 'dict',
-                'db_type': 'JSONB',
                 'nullable': False,
                 'primary_key': False,
                 'unique': False,
@@ -80,7 +115,7 @@ def upgrade(ctx):
                 'name': 'group_id',
                 'python_type': 'str',
                 'db_type': None,
-                'nullable': True,
+                'nullable': False,
                 'primary_key': False,
                 'unique': False,
                 'default': None,
@@ -137,7 +172,7 @@ def upgrade(ctx):
             },
             {
                 'name': 'attachments',
-                'python_type': 'list',
+                'python_type': 'json[]',
                 'db_type': 'JSONB',
                 'nullable': False,
                 'primary_key': False,
@@ -147,7 +182,7 @@ def upgrade(ctx):
             },
             {
                 'name': 'timestamp',
-                'python_type': 'int',
+                'python_type': 'datetime',
                 'db_type': None,
                 'nullable': False,
                 'primary_key': False,
@@ -159,7 +194,7 @@ def upgrade(ctx):
                 'name': 'group_id',
                 'python_type': 'str',
                 'db_type': None,
-                'nullable': True,
+                'nullable': False,
                 'primary_key': False,
                 'unique': False,
                 'default': None,
@@ -186,7 +221,7 @@ def upgrade(ctx):
                 'ref_columns': [
                     'id'
                 ],
-                'on_delete': 'CASCADE',
+                'on_delete': 'SET NULL',
                 'on_update': 'CASCADE'
             },
             {
@@ -203,56 +238,11 @@ def upgrade(ctx):
             }
         ],
     )
-    ctx.create_table(
-        "groupmeuser",
-        fields=[
-            {
-                'name': 'id',
-                'python_type': 'str',
-                'db_type': None,
-                'nullable': False,
-                'primary_key': True,
-                'unique': False,
-                'default': None,
-                'auto_increment': False
-            },
-            {
-                'name': 'name',
-                'python_type': 'str',
-                'db_type': None,
-                'nullable': False,
-                'primary_key': False,
-                'unique': False,
-                'default': None,
-                'auto_increment': False
-            },
-            {
-                'name': 'image_url',
-                'python_type': 'str',
-                'db_type': None,
-                'nullable': True,
-                'primary_key': False,
-                'unique': False,
-                'default': None,
-                'auto_increment': False
-            },
-            {
-                'name': 'muted',
-                'python_type': 'bool',
-                'db_type': None,
-                'nullable': False,
-                'primary_key': False,
-                'unique': False,
-                'default': 'FALSE',
-                'auto_increment': False
-            }
-        ],
-    )
 
 
 def downgrade(ctx):
     """Revert migration."""
-    ctx.drop_table("groupmeuser")
     ctx.drop_table("groupmemessage")
     ctx.drop_table("groupmebot")
     ctx.drop_table("groupmegroup")
+    ctx.drop_table("groupmeuser")

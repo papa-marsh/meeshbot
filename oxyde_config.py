@@ -1,9 +1,7 @@
-import os
+from meeshbot.config import DATABASE_URL
 
 DATABASES = {
-    "default": os.environ.get(
-        "DATABASE_URL", "postgresql://meeshbot:meeshbot@localhost:5432/meeshbot"
-    ),
+    "default": DATABASE_URL,
 }
 
 MODELS = [
