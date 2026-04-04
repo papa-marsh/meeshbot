@@ -6,7 +6,7 @@ from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 async def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
     await sync_message_to_db(webhook)
 
-    if webhook.text is None:
+    if not webhook.text:
         return
 
     if webhook.text[0] == "/":
