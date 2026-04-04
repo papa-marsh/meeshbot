@@ -2,14 +2,19 @@
 shell:
 	uv run --env-file .env ipython -i meeshbot/shell.py
 
-.PHONY: pull-deploy
-pull-deploy:
-	git checkout main && \
-	git pull && \
+.PHONY: deploy
+deploy:
 	docker compose down && \
 	docker compose up -d --build && \
 	sleep 1 && \
 	make logs
+
+
+.PHONY: pull-deploy
+pull-deploy:
+	git checkout main && \
+	git pull && \
+	make deploy
 
 .PHONY: pull-deploy-f
 pull-deploy-f:
@@ -17,10 +22,7 @@ pull-deploy-f:
 	git fetch origin && \
 	git reset --hard origin/main && \
 	git pull && \
-	docker compose down && \
-	docker compose up -d --build && \
-	sleep 1 && \
-	make logs
+	make deploy
 
 .PHONY: logs
 logs:
