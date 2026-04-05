@@ -1,7 +1,7 @@
 import functools
 from collections.abc import Awaitable, Callable
 
-from meeshbot.commands import help, ping, roll, whatisjeff, whatissam
+from meeshbot.commands import help, ping, roll, sync, whatisjeff, whatissam
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
@@ -28,6 +28,7 @@ COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/ping": ping,
     "/adminping": admin_only(ping),
     "/roll": roll,
+    "/sync": admin_only(sync),
     "/whatissam": whatissam,
     "/whatisjeff": whatisjeff,
 }
