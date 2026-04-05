@@ -4,7 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /code
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock oxyde_config.py ./
 RUN uv sync --frozen --no-dev
 
 COPY ./meeshbot ./meeshbot

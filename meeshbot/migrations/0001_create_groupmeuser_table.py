@@ -1,6 +1,6 @@
 """Auto-generated migration.
 
-Created: 2026-04-04 19:11:39
+Created: 2026-04-04 20:58:48
 """
 
 depends_on = None

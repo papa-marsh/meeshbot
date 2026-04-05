@@ -11,4 +11,4 @@ MODELS = [
     "meeshbot.models.message",
 ]
 
-MIGRATIONS_DIR = "migrations"
+MIGRATIONS_DIR = "meeshbot/migrations"
