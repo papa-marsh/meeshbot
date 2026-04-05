@@ -1,6 +1,6 @@
 .PHONY: shell
 shell:
-	uv run --env-file .env ipython -i meeshbot/shell.py
+	docker compose exec meeshbot uv run ipython -i meeshbot/shell.py
 
 .PHONY: deploy
 deploy:
