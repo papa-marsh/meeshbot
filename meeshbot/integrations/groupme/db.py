@@ -24,12 +24,18 @@ async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:
 
     await GroupMeGroup.objects.get_or_create(
         id=message.group_id,
-        defaults={"name": message.group_id, "created_at": created_at},
+        defaults={
+            "name": message.group_id,
+            "created_at": created_at,
+        },
     )
 
     await GroupMeUser.objects.get_or_create(
         id=message.user_id,
-        defaults={"name": message.name, "image_url": message.avatar_url},
+        defaults={
+            "name": message.name,
+            "image_url": message.avatar_url,
+        },
     )
 
     await GroupMeMessage.objects.get_or_create(
