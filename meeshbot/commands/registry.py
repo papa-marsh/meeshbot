@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 
 from meeshbot.commands import help, ping, roll, sync, whatisjeff, whatissam
 from meeshbot.integrations.groupme.client import GroupMeClient
-from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS
+from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS, PUBLIC_GROUPS
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 CommandFuncT = Callable[[GroupMeWebhookPayload], Awaitable[None]]
@@ -23,12 +23,26 @@ def admin_only(func: CommandFuncT) -> CommandFuncT:
     return wrapper
 
 
+def no_public(func: CommandFuncT) -> CommandFuncT:
+    @functools.wraps(func)
+    async def wrapper(webhook: GroupMeWebhookPayload) -> None:
+        if webhook.group_id in PUBLIC_GROUPS:
+            await GroupMeClient().post_message(
+                group_id=webhook.group_id,
+                text="You can't do that here IDIOT",
+            )
+            return
+        await func(webhook)
+
+    return wrapper
+
+
 COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/help": help,
     "/ping": ping,
     "/adminping": admin_only(ping),
     "/roll": roll,
-    "/sync": admin_only(sync),
+    "/sync": no_public(admin_only(sync)),
     "/whatissam": whatissam,
     "/whatisjeff": whatisjeff,
 }
