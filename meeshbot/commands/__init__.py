@@ -2,8 +2,8 @@ from .help import help
 from .ping import ping
 from .roll import roll
 from .sync import sync
-from .whatissam import whatissam
 from .whatisjeff import whatisjeff
+from .whatissam import whatissam
 
 __all__ = [
     help.__name__,
