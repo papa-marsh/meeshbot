@@ -2,20 +2,18 @@
 
 from datetime import UTC, datetime
 
+from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
-from meeshbot.models import GroupMeBot, GroupMeGroup, GroupMeMessage, GroupMeUser
+from meeshbot.models import GroupMeGroup, GroupMeMessage, GroupMeUser
 
 
-async def get_bot_id(group_id: str) -> str:
-    """Return the bot ID for the given group."""
-    bot: GroupMeBot = await GroupMeBot.objects.filter(group_id=group_id).get()  # type:ignore[assignment]
-    return bot.id
+def get_bot_id(group_id: str, raise_if_missing: bool = False) -> str | None:
+    bot_id = BOTS_BY_GROUP.get(group_id)
 
+    if bot_id is None and raise_if_missing:
+        raise ValueError(f"Bot ID lookup failed for group ID {group_id}")
 
-async def get_group_ids() -> list[str]:
-    """Return all configured group IDs."""
-    bots = await GroupMeBot.objects.all()
-    return [bot.group_id for bot in bots]
+    return bot_id
 
 
 async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:

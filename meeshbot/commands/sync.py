@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 from typing import cast
 
 from meeshbot.integrations.groupme.client import GroupMeClient
-from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
+from meeshbot.integrations.groupme.queries import get_bot_id
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
-from meeshbot.models import GroupMeBot, GroupMeGroup
+from meeshbot.models import GroupMeGroup
 
 
 async def sync(webhook: GroupMeWebhookPayload) -> None:
@@ -15,7 +15,7 @@ async def sync(webhook: GroupMeWebhookPayload) -> None:
     if len(args) < 2:
         await GroupMeClient().post_message(
             group_id=webhook.group_id,
-            text="Usage: /sync <target>",
+            text="Usage: /sync <groups>",
         )
         return
 
@@ -33,17 +33,18 @@ async def sync_groups(webhook: GroupMeWebhookPayload) -> None:
     client = GroupMeClient()
     groups = await client.get_groups()
     group_count = 0
-    bot_count = 0
+    botless_groups = set()
 
     for group in groups:
-        created_at = datetime.fromtimestamp(group.created_at, tz=UTC)
+        if get_bot_id(group.id) is None:
+            botless_groups.add(group.name)
 
         group_obj, created = await GroupMeGroup.objects.get_or_create(
             id=group.id,
             defaults={
                 "name": group.name,
                 "image_url": group.image_url,
-                "created_at": created_at,
+                "created_at": datetime.fromtimestamp(group.created_at, tz=UTC),
             },
         )
         group_obj = cast(GroupMeGroup, group_obj)
@@ -55,23 +56,10 @@ async def sync_groups(webhook: GroupMeWebhookPayload) -> None:
 
         group_count += 1
 
-        bot_id = BOTS_BY_GROUP.get(group.id)
-        if bot_id is None:
-            continue
+    text = f"Synced {group_count} groups."
+    if botless_groups:
+        text += "\n\nGroups missing bots:"
+        for botless_group in botless_groups:
+            text += f"\n{botless_group}"
 
-        bot_obj, created = await GroupMeBot.objects.get_or_create(
-            id=bot_id,
-            defaults={"group_id": group.id},
-        )
-        bot_obj = cast(GroupMeBot, bot_obj)
-
-        if not created:
-            bot_obj.group = group_obj
-            await bot_obj.save()
-
-        bot_count += 1
-
-    await client.post_message(
-        group_id=webhook.group_id,
-        text=f"Synced {group_count} groups and {bot_count} bots.",
-    )
+    await client.post_message(group_id=webhook.group_id, text=text)

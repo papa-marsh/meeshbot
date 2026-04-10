@@ -5,7 +5,7 @@ import httpx
 from structlog.stdlib import get_logger
 
 from meeshbot.config import GROUPME_TOKEN
-from meeshbot.integrations.groupme.db import get_bot_id
+from meeshbot.integrations.groupme.queries import get_bot_id
 from meeshbot.integrations.groupme.types import Group, Message, MessageAttachment
 
 BASE_URL = "https://api.groupme.com/v3"
@@ -78,7 +78,7 @@ class GroupMeClient:
         attachments: list[MessageAttachment] | None = None,
     ) -> None:
         payload: dict[str, Any] = {
-            "bot_id": await get_bot_id(group_id),
+            "bot_id": get_bot_id(group_id, raise_if_missing=True),
             "text": text,
         }
         if attachments:

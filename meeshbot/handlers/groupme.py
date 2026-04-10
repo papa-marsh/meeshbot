@@ -1,5 +1,5 @@
 from meeshbot.commands.registry import get_command_func
-from meeshbot.integrations.groupme.db import sync_message_to_db
+from meeshbot.integrations.groupme.queries import sync_message_to_db
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 
