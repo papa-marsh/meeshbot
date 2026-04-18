@@ -2,12 +2,21 @@ from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import MessageCount, get_message_counts
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
-MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+def _rank_emoji(rank: int) -> str:
+    if rank == 1:
+        return "🥇"
+    if rank == 2:
+        return "🥈"
+    if rank == 3:
+        return "🥉"
+    if 4 <= rank <= 9:
+        return f"{rank}\ufe0f\u20e3"
+    return "#️⃣"
 
 
 def _format_entry(rank: int, entry: MessageCount) -> str:
-    prefix = MEDALS.get(rank, f"{rank}.")
-    return f"{prefix} {entry['name']} | {entry['count']}"
+    return f"{_rank_emoji(rank)} {entry['name']} | {entry['count']}"
 
 
 async def scoreboard(webhook: GroupMeWebhookPayload) -> None:
