@@ -1,7 +1,9 @@
 """Database utilities for GroupMe integration."""
 
 from datetime import UTC, datetime
-from typing import cast
+from typing import TypedDict, cast
+
+from oxyde.queries.aggregates import Count
 
 from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload, Message
@@ -87,3 +89,43 @@ async def upsert_message(group_id: str, message: Message) -> None:
             favorited_by=message.favorited_by,
             timestamp=timestamp,
         )
+
+
+class _MessageCountRow(TypedDict):
+    sender_id: str
+    count: int
+
+
+class MessageCount(TypedDict):
+    name: str
+    count: int
+
+
+async def get_message_counts(group_id: str) -> list[MessageCount]:
+    """Return message counts per sender for a group, sorted descending.
+
+    Messages with no sender (sender_id is NULL) are excluded.
+    """
+    rows: list[_MessageCountRow] = (
+        await GroupMeMessage.objects.filter(
+            group_id=group_id,
+            sender_id__isnull=False,
+        )
+        .values("sender_id")
+        .annotate(count=Count("id"))
+        .group_by("sender_id")
+        .order_by("-count")
+        .all()
+    )
+
+    if not rows:
+        return []
+
+    sender_ids = [row["sender_id"] for row in rows]
+    users = await GroupMeUser.objects.filter(id__in=sender_ids).all()
+    name_by_id = {user.id: user.name for user in users}
+
+    return [
+        {"name": name_by_id.get(row["sender_id"], row["sender_id"]), "count": row["count"]}
+        for row in rows
+    ]
