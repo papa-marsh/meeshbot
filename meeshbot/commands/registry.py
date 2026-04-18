@@ -1,7 +1,16 @@
 import functools
 from collections.abc import Awaitable, Callable
 
-from meeshbot.commands import help, ping, roll, scoreboard, sync, whatisjeff, whatissam
+from meeshbot.commands import (
+    help,
+    ping,
+    roll,
+    scoreboard,
+    scoreboard_all,
+    sync,
+    what_is_jeff,
+    what_is_sam,
+)
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS, PUBLIC_GROUPS
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
@@ -40,12 +49,13 @@ def no_public(func: CommandFuncT) -> CommandFuncT:
 COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/help": help,
     "/ping": ping,
-    "/adminping": admin_only(ping),
+    "/admin-ping": admin_only(ping),
     "/roll": roll,
     "/scoreboard": scoreboard,
+    "/scoreboard-all": no_public(scoreboard_all),
     "/sync": no_public(admin_only(sync)),
-    "/whatissam": whatissam,
-    "/whatisjeff": whatisjeff,
+    "/whatissam": what_is_sam,
+    "/whatisjeff": what_is_jeff,
 }
 
 

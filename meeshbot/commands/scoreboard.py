@@ -21,15 +21,25 @@ def _format_entry(rank: int, entry: MessageCount) -> str:
 
 async def scoreboard(webhook: GroupMeWebhookPayload) -> None:
     counts = await get_message_counts(webhook.group_id)
+    await _post_scoreboard(webhook, counts, title="🏆 Message Count Leaderboard 🏆")
 
+
+async def scoreboard_all(webhook: GroupMeWebhookPayload) -> None:
+    counts = await get_message_counts()
+    await _post_scoreboard(webhook, counts, title="🏆 All-Time Message Count Leaderboard 🏆")
+
+
+async def _post_scoreboard(
+    webhook: GroupMeWebhookPayload, counts: list[MessageCount], title: str
+) -> None:
     if not counts:
         await GroupMeClient().post_message(
             group_id=webhook.group_id,
-            text="No messages found for this group.",
+            text="No messages found.",
         )
         return
 
-    lines = ["🏆 Message Count Leaderboard 🏆\n"]
+    lines = [f"{title}\n"]
     for i, entry in enumerate(counts, start=1):
         lines.append(_format_entry(i, entry))
 

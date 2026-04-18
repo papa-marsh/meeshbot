@@ -101,16 +101,18 @@ class MessageCount(TypedDict):
     count: int
 
 
-async def get_message_counts(group_id: str) -> list[MessageCount]:
-    """Return message counts per sender for a group, sorted descending.
+async def get_message_counts(group_id: str | None = None) -> list[MessageCount]:
+    """Return message counts per sender, sorted descending.
 
+    If group_id is provided, counts are scoped to that group.
     Messages with no sender (sender_id is NULL) are excluded.
     """
+    filters: dict[str, str | bool] = {"sender_id__isnull": False}
+    if group_id is not None:
+        filters["group_id"] = group_id
+
     rows: list[_MessageCountRow] = (
-        await GroupMeMessage.objects.filter(
-            group_id=group_id,
-            sender_id__isnull=False,
-        )
+        await GroupMeMessage.objects.filter(**filters)
         .values("sender_id")
         .annotate(count=Count("id"))
         .group_by("sender_id")
