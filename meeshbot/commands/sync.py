@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from typing import cast
 
+from meeshbot.config import GROUPME_TOKEN
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import get_bot_id, upsert_message, upsert_user
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
@@ -118,8 +119,6 @@ async def sync_messages(webhook: GroupMeWebhookPayload, args: list[str]) -> None
                 )
 
     except Exception as e:
-        from meeshbot.config import GROUPME_TOKEN
-
         error_text = str(e).replace(GROUPME_TOKEN, "<token>")
         resume_hint = (
             f"\n\nResume with: /sync messages {target_group_id} {before_id}" if before_id else ""
