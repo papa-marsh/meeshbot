@@ -13,6 +13,7 @@ class GroupMeMessage(Model):
     text: str | None = Field(default=None)  # type:ignore[assignment]
     system: bool = Field(default=False)  # type:ignore[assignment]
     attachments: list[dict] = Field(default_factory=list, db_type="JSONB")  # type:ignore[assignment]
+    favorited_by: list[str] = Field(default_factory=list, db_type="JSONB")  # type:ignore[assignment]
     timestamp: datetime
 
     class Meta:

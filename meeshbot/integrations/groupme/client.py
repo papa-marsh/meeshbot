@@ -117,7 +117,23 @@ class GroupMeClient:
         if after_id is not None:
             params["after_id"] = after_id
 
-        data = await self._get(f"/groups/{group_id}/messages", params=params)
+        async with httpx.AsyncClient() as client:
+            url = f"{BASE_URL}/groups/{group_id}/messages"
+            request_params = {"token": self.api_token, **params}
+            log.debug("Sending request to GroupMe", method=HTTPMethod.GET, url=url)
+            response = await client.get(url, params=request_params, timeout=10)
+        log.debug(
+            "Received response from GroupMe",
+            status=response.status_code,
+            url=str(response.url).replace(self.api_token, "<token>"),
+        )
+
+        if response.status_code == 304:
+            return []
+
+        response.raise_for_status()
+        data = response.json()["response"]
+
         if not isinstance(data, dict):
             raise TypeError
 

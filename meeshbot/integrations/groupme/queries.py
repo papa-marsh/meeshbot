@@ -1,9 +1,10 @@
 """Database utilities for GroupMe integration."""
 
 from datetime import UTC, datetime
+from typing import cast
 
 from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
-from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
+from meeshbot.integrations.groupme.types import GroupMeWebhookPayload, Message
 from meeshbot.models import GroupMeGroup, GroupMeMessage, GroupMeUser
 
 
@@ -47,3 +48,42 @@ async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:
             "timestamp": created_at,
         },
     )
+
+
+async def upsert_user(user_id: str, name: str, image_url: str | None) -> None:
+    """Create or update a GroupMeUser by ID."""
+    obj, created = await GroupMeUser.objects.get_or_create(
+        id=user_id,
+        defaults={"name": name, "image_url": image_url},
+    )
+    user = cast(GroupMeUser, obj)
+    if not created:
+        user.name = name
+        user.image_url = image_url
+        await user.save()
+
+
+async def upsert_message(group_id: str, message: Message) -> None:
+    """Create or update a GroupMeMessage from a GroupMe API Message object."""
+    timestamp = datetime.fromtimestamp(message.created_at, tz=UTC)
+    attachments = [a.model_dump() for a in message.attachments]
+
+    existing = await GroupMeMessage.objects.get_or_none(id=message.id)
+    if existing is not None:
+        existing.text = message.text
+        existing.system = message.system
+        existing.attachments = attachments
+        existing.favorited_by = message.favorited_by
+        existing.timestamp = timestamp
+        await existing.save()
+    else:
+        await GroupMeMessage.objects.create(
+            id=message.id,
+            group_id=group_id,
+            sender_id=message.user_id,
+            text=message.text,
+            system=message.system,
+            attachments=attachments,
+            favorited_by=message.favorited_by,
+            timestamp=timestamp,
+        )

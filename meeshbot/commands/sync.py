@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import cast
 
 from meeshbot.integrations.groupme.client import GroupMeClient
-from meeshbot.integrations.groupme.queries import get_bot_id
+from meeshbot.integrations.groupme.queries import get_bot_id, upsert_message, upsert_user
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.models import GroupMeGroup
 
@@ -15,13 +15,15 @@ async def sync(webhook: GroupMeWebhookPayload) -> None:
     if len(args) < 2:
         await GroupMeClient().post_message(
             group_id=webhook.group_id,
-            text="Usage: /sync <groups>",
+            text="Usage: /sync <groups|messages>",
         )
         return
 
     match args[1].lower():
         case "groups":
             await sync_groups(webhook)
+        case "messages":
+            await sync_messages(webhook, args[2:])
         case unknown:
             await GroupMeClient().post_message(
                 group_id=webhook.group_id,
@@ -63,3 +65,69 @@ async def sync_groups(webhook: GroupMeWebhookPayload) -> None:
             text += f"\n{botless_group}"
 
     await client.post_message(group_id=webhook.group_id, text=text)
+
+
+async def sync_messages(webhook: GroupMeWebhookPayload, args: list[str]) -> None:
+    client = GroupMeClient()
+
+    if not args:
+        await client.post_message(
+            group_id=webhook.group_id,
+            text="Usage: /sync messages <group_id> [before_id]",
+        )
+        return
+
+    target_group_id = args[0]
+    before_id: str | None = args[1] if len(args) > 1 else None
+
+    await client.post_message(
+        group_id=webhook.group_id,
+        text=f"Starting message sync for group {target_group_id}..."
+        + (f" (resuming from {before_id})" if before_id else ""),
+    )
+
+    total_synced = 0
+
+    try:
+        while True:
+            messages = await client.get_messages(
+                group_id=target_group_id,
+                before_id=before_id,
+                limit=500,
+            )
+
+            if not messages:
+                break
+
+            for message in messages:
+                await upsert_user(
+                    user_id=message.user_id,
+                    name=message.name,
+                    image_url=message.avatar_url,
+                )
+                await upsert_message(group_id=target_group_id, message=message)
+
+            total_synced += len(messages)
+            before_id = messages[-1].id
+
+            if total_synced % 500 == 0:
+                resume_cmd = f"/sync messages {target_group_id} {before_id}"
+                await client.post_message(
+                    group_id=webhook.group_id,
+                    text=f"Synced {total_synced} messages... (resume: {resume_cmd})",
+                )
+
+    except Exception as e:
+        resume_hint = (
+            f"\n\nResume with: /sync messages {target_group_id} {before_id}" if before_id else ""
+        )
+        await client.post_message(
+            group_id=webhook.group_id,
+            text=f"Sync failed after {total_synced} messages: {e}{resume_hint}",
+        )
+        return
+
+    await client.post_message(
+        group_id=webhook.group_id,
+        text=f"Sync complete. {total_synced} messages synced for group {target_group_id}.",
+    )
