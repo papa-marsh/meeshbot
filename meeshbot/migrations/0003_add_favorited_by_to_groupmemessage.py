@@ -8,18 +8,8 @@ depends_on = "0002_drop_groupmebot_table"
 
 def upgrade(ctx):
     """Apply migration."""
-    ctx.add_column(
-        "groupmemessage",
-        {
-            "name": "favorited_by",
-            "python_type": "str[]",
-            "db_type": "JSONB",
-            "nullable": False,
-            "primary_key": False,
-            "unique": False,
-            "default": "[]",
-            "auto_increment": False,
-        },
+    ctx.execute(
+        "ALTER TABLE groupmemessage ADD COLUMN favorited_by JSONB NOT NULL DEFAULT '[]'::jsonb"
     )
 
 
