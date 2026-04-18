@@ -1,6 +1,6 @@
-from typing import Annotated, Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class ReplyAttachment(BaseModel):
@@ -28,10 +28,19 @@ class VideoAttachment(BaseModel):
     blur_hash: str | None = None
 
 
-MessageAttachment = Annotated[
-    ReplyAttachment | MentionsAttachment | ImageAttachment | VideoAttachment,
-    Field(discriminator="type"),
-]
+class OtherAttachment(BaseModel):
+    """Catch-all for unknown attachment types GroupMe may introduce."""
+
+    type: str
+    model_config = {"extra": "allow"}
+
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        return super().model_dump(**kwargs)
+
+
+MessageAttachment = (
+    ReplyAttachment | MentionsAttachment | ImageAttachment | VideoAttachment | OtherAttachment
+)
 
 
 class GroupMeWebhookPayload(BaseModel):
