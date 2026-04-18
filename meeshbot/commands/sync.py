@@ -93,7 +93,7 @@ async def sync_messages(webhook: GroupMeWebhookPayload, args: list[str]) -> None
             messages = await client.get_messages(
                 group_id=target_group_id,
                 before_id=before_id,
-                limit=500,
+                limit=100,
             )
 
             if not messages:
@@ -118,12 +118,15 @@ async def sync_messages(webhook: GroupMeWebhookPayload, args: list[str]) -> None
                 )
 
     except Exception as e:
+        from meeshbot.config import GROUPME_TOKEN
+
+        error_text = str(e).replace(GROUPME_TOKEN, "<token>")
         resume_hint = (
             f"\n\nResume with: /sync messages {target_group_id} {before_id}" if before_id else ""
         )
         await client.post_message(
             group_id=webhook.group_id,
-            text=f"Sync failed after {total_synced} messages: {e}{resume_hint}",
+            text=f"Sync failed after {total_synced} messages: {error_text}{resume_hint}",
         )
         return
 
