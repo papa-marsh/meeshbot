@@ -1,5 +1,5 @@
 from meeshbot.integrations.groupme.client import GroupMeClient
-from meeshbot.integrations.groupme.queries import MessageCount, get_message_counts
+from meeshbot.integrations.groupme.queries import MessageCount, get_message_counts, is_public_group
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 
@@ -21,16 +21,22 @@ def _format_entry(rank: int, entry: MessageCount) -> str:
 
 async def scoreboard(webhook: GroupMeWebhookPayload) -> None:
     counts = await get_message_counts(webhook.group_id)
-    await _post_scoreboard(webhook, counts, title="🏆 Message Count Leaderboard 🏆")
+    title = "🏆 Message Count Leaderboard 🏆"
+    if not is_public_group(webhook.group_id):
+        title += "\n(for total across all groups, use `/scoreboard-all`)"
+    await _post_scoreboard(webhook, counts, title)
 
 
 async def scoreboard_all(webhook: GroupMeWebhookPayload) -> None:
     counts = await get_message_counts()
-    await _post_scoreboard(webhook, counts, title="🏆 All-Time Message Count Leaderboard 🏆")
+    title = "🏆 All-Time Message Count Leaderboard 🏆"
+    await _post_scoreboard(webhook, counts, title)
 
 
 async def _post_scoreboard(
-    webhook: GroupMeWebhookPayload, counts: list[MessageCount], title: str
+    webhook: GroupMeWebhookPayload,
+    counts: list[MessageCount],
+    title: str,
 ) -> None:
     if not counts:
         await GroupMeClient().post_message(

@@ -4,6 +4,8 @@ from collections.abc import Awaitable, Callable
 from meeshbot.commands import (
     help,
     ping,
+    reminders,
+    remindme,
     roll,
     scoreboard,
     scoreboard_all,
@@ -12,7 +14,7 @@ from meeshbot.commands import (
     what_is_sam,
 )
 from meeshbot.integrations.groupme.client import GroupMeClient
-from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS, PUBLIC_GROUPS
+from meeshbot.integrations.groupme.queries import is_admin_user, is_public_group
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 
 CommandFuncT = Callable[[GroupMeWebhookPayload], Awaitable[None]]
@@ -21,7 +23,7 @@ CommandFuncT = Callable[[GroupMeWebhookPayload], Awaitable[None]]
 def admin_only(func: CommandFuncT) -> CommandFuncT:
     @functools.wraps(func)
     async def wrapper(webhook: GroupMeWebhookPayload) -> None:
-        if webhook.user_id not in ADMIN_USER_IDS:
+        if not is_admin_user(webhook.user_id):
             await GroupMeClient().post_message(
                 group_id=webhook.group_id,
                 text="You're not allowed to do that IDIOT",
@@ -35,7 +37,7 @@ def admin_only(func: CommandFuncT) -> CommandFuncT:
 def no_public(func: CommandFuncT) -> CommandFuncT:
     @functools.wraps(func)
     async def wrapper(webhook: GroupMeWebhookPayload) -> None:
-        if webhook.group_id in PUBLIC_GROUPS:
+        if is_public_group(webhook.group_id):
             await GroupMeClient().post_message(
                 group_id=webhook.group_id,
                 text="You can't do that here IDIOT",
@@ -50,6 +52,8 @@ COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/help": help,
     "/ping": ping,
     "/admin-ping": admin_only(ping),
+    "/remindme": remindme,
+    "/reminders": reminders,
     "/roll": roll,
     "/scoreboard": scoreboard,
     "/scoreboard-all": no_public(scoreboard_all),

@@ -5,7 +5,7 @@ from typing import TypedDict, cast
 
 from oxyde.queries.aggregates import Count
 
-from meeshbot.integrations.groupme.secrets import BOTS_BY_GROUP
+from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS, BOTS_BY_GROUP, PUBLIC_GROUPS
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload, Message
 from meeshbot.models import GroupMeGroup, GroupMeMessage, GroupMeUser
 
@@ -17,6 +17,14 @@ def get_bot_id(group_id: str, raise_if_missing: bool = False) -> str | None:
         raise ValueError(f"Bot ID lookup failed for group ID {group_id}")
 
     return bot_id
+
+
+def is_admin_user(user_id: str) -> bool:
+    return user_id in ADMIN_USER_IDS
+
+
+def is_public_group(group_id: str) -> bool:
+    return group_id in PUBLIC_GROUPS
 
 
 async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:

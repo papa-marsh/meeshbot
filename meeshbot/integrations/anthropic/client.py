@@ -16,6 +16,8 @@ class ClaudeModel(StrEnum):
 DEFAULT_MODEL = ClaudeModel.HAIKU
 DEFAULT_MAX_TOKENS = 1024
 
+ERROR_OUTPUT = "FAILED"
+
 
 class _ResolvedTimestamp(BaseModel):
     iso: str
@@ -86,7 +88,9 @@ class AnthropicClient:
             "timezone suffix. For vague times of day, use a reasonable default "
             "(morning=09:00, afternoon=14:00, evening=18:00, night=21:00). "
             "For dates with no time specified, use 10:00. "
-            "Output ONLY the ISO 8601 string and nothing else."
+            "Output ONLY the ISO 8601 string and nothing else. "
+            "If for some reason, the input cannot be resolved "
+            f"to a timestamp, output only the text: {ERROR_OUTPUT}"
         )
 
         response = await self._client.messages.parse(

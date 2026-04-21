@@ -9,6 +9,7 @@ MODELS = [
     "meeshbot.models.user",
     "meeshbot.models.bot",
     "meeshbot.models.message",
+    "meeshbot.models.reminder",
 ]
 
 MIGRATIONS_DIR = "meeshbot/migrations"
