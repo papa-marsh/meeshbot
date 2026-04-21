@@ -14,14 +14,14 @@ class GroupMeMessage(Model):
     class Meta:
         is_table: bool
     id: str
-    group: GroupMeGroup
+    group: GroupMeGroup | None
     sender: GroupMeUser | None
     text: str | None
     system: bool
     attachments: list[dict]
     favorited_by: list[str]
     timestamp: datetime
-    group_id: str
+    group_id: str | None
     sender_id: str | None
     objects: "GroupMeMessageManager"
 

@@ -1,7 +1,6 @@
 """Reminder dispatcher — called by the scheduler to send due reminders."""
 
 from datetime import UTC, datetime
-from typing import cast
 
 from structlog.stdlib import get_logger
 
@@ -11,7 +10,9 @@ from meeshbot.integrations.groupme.types import (
     MessageAttachment,
     ReplyAttachment,
 )
-from meeshbot.models import GroupMeUser, Reminder
+from meeshbot.models import Reminder
+from meeshbot.models.group import GroupMeGroup
+from meeshbot.models.user import GroupMeUser
 
 log = get_logger()
 
@@ -27,6 +28,7 @@ async def send_due_reminders() -> None:
             sent=False,
             eta__lte=now,
         )
+        .join("group", "sender")
         .order_by("eta")
         .all()
     )
@@ -41,9 +43,10 @@ async def send_due_reminders() -> None:
 
 
 async def _send_reminder(reminder: Reminder) -> None:
-    user = cast(GroupMeUser, reminder.sender)  # type:ignore[redundant-cast]
-    first_name = user.name.split()[0]
+    if not (isinstance(reminder.group, GroupMeGroup) and isinstance(reminder.sender, GroupMeUser)):
+        raise TypeError("Reminder model must be joined by `group` and `sender`")
 
+    first_name = reminder.sender.name.split()[0]
     text = f"{_MENTION_PREFIX}{first_name}: {reminder.message}"
 
     prefix_bytes = len(_MENTION_PREFIX.encode("utf-8"))
@@ -57,7 +60,7 @@ async def _send_reminder(reminder: Reminder) -> None:
         ),
         MentionsAttachment(
             type="mentions",
-            user_ids=[user.id],
+            user_ids=[reminder.sender.id],
             loci=[(prefix_bytes, name_bytes)],
         ),
     ]
@@ -75,5 +78,5 @@ async def _send_reminder(reminder: Reminder) -> None:
         "Reminder sent",
         reminder_id=reminder.id,
         group_id=reminder.group.id,
-        sender_id=user.id,
+        sender_id=reminder.sender.id,
     )

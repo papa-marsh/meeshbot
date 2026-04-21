@@ -8,7 +8,7 @@ from meeshbot.models.user import GroupMeUser
 
 class GroupMeMessage(Model):
     id: str = Field(db_pk=True)  # type:ignore[assignment]
-    group: GroupMeGroup = Field(default=None, db_on_delete="SET NULL")  # type:ignore[assignment]
+    group: GroupMeGroup | None = Field(default=None, db_on_delete="SET NULL")  # type:ignore[assignment]
     sender: GroupMeUser | None = Field(default=None, db_on_delete="SET NULL")  # type:ignore[assignment]
     text: str | None = Field(default=None)  # type:ignore[assignment]
     system: bool = Field(default=False)  # type:ignore[assignment]

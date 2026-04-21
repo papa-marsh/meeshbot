@@ -14,15 +14,15 @@ class Reminder(Model):
     class Meta:
         is_table: bool
     id: str
-    group: GroupMeGroup
-    sender: GroupMeUser
+    group: GroupMeGroup | None
+    sender: GroupMeUser | None
     command_message_id: str
     message: str
     eta: datetime
     created_at: datetime
     sent: bool
-    group_id: str
-    sender_id: str
+    group_id: str | None
+    sender_id: str | None
     objects: "ReminderManager"
 
 
