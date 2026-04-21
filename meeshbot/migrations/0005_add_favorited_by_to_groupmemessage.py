@@ -10,16 +10,19 @@ def upgrade(ctx):
     """Apply migration."""
     ctx.drop_column("groupmemessage", "favorited_by")  # Added manually bc of migration 0003
 
-    ctx.add_column("groupmemessage", {
-    'name': 'favorited_by',
-    'python_type': 'str[]',
-    'db_type': 'JSONB',
-    'nullable': False,
-    'primary_key': False,
-    'unique': False,
-    'default': None,
-    'auto_increment': False
-})
+    ctx.add_column(
+        "groupmemessage",
+        {
+            "name": "favorited_by",
+            "python_type": "str[]",
+            "db_type": "JSONB",
+            "nullable": False,
+            "primary_key": False,
+            "unique": False,
+            "default": "'[]'",
+            "auto_increment": False,
+        },
+    )
     ctx.alter_column("groupmemessage", "group_id", nullable=True)
     ctx.alter_column("reminder", "group_id", nullable=True)
     ctx.alter_column("reminder", "sender_id", nullable=True)
