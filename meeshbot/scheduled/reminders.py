@@ -15,7 +15,6 @@ from meeshbot.models import GroupMeUser, Reminder
 
 log = get_logger()
 
-# Text prefix used in the reminder notification; the @mention starts right after it.
 _MENTION_PREFIX = "🔔 Reminder for "
 
 
