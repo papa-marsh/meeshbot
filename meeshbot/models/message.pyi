@@ -19,7 +19,6 @@ class GroupMeMessage(Model):
     text: str | None
     system: bool
     attachments: list[dict]
-    favorited_by: list[str]
     timestamp: datetime
     group_id: str | None
     sender_id: str | None
@@ -37,9 +36,6 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         attachments: list[dict] | None = None,
         attachments__in: list[list[dict]] | None = None,
         attachments__isnull: bool | None = None,
-        favorited_by: list[str] | None = None,
-        favorited_by__in: list[list[str]] | None = None,
-        favorited_by__isnull: bool | None = None,
         group: GroupMeGroup | None = None,
         group__in: list[GroupMeGroup] | None = None,
         group__isnull: bool | None = None,
@@ -111,9 +107,6 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         attachments: list[dict] | None = None,
         attachments__in: list[list[dict]] | None = None,
         attachments__isnull: bool | None = None,
-        favorited_by: list[str] | None = None,
-        favorited_by__in: list[list[str]] | None = None,
-        favorited_by__isnull: bool | None = None,
         group: GroupMeGroup | None = None,
         group__in: list[GroupMeGroup] | None = None,
         group__isnull: bool | None = None,
@@ -179,7 +172,7 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         """Exclude objects matching field lookups."""
         ...
 
-    def order_by(self, *fields: Literal["attachments", "-attachments", "favorited_by", "-favorited_by", "group", "-group", "group_id", "-group_id", "id", "-id", "sender", "-sender", "sender_id", "-sender_id", "system", "-system", "text", "-text", "timestamp", "-timestamp"]) -> "GroupMeMessageQuery":
+    def order_by(self, *fields: Literal["attachments", "-attachments", "group", "-group", "group_id", "-group_id", "id", "-id", "sender", "-sender", "sender_id", "-sender_id", "system", "-system", "text", "-text", "timestamp", "-timestamp"]) -> "GroupMeMessageQuery":
         """Order results by fields."""
         ...
 
@@ -195,7 +188,7 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         """Return distinct results."""
         ...
 
-    def select(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
+    def select(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
         """Select specific fields."""
         ...
 
@@ -219,7 +212,7 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         """Add computed fields using aggregate functions."""
         ...
 
-    def group_by(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
+    def group_by(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
         """Add GROUP BY clause."""
         ...
 
@@ -227,11 +220,11 @@ class GroupMeMessageQuery(Query[GroupMeMessage]):
         """Add HAVING clause for filtering grouped results."""
         ...
 
-    def values(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
+    def values(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> "GroupMeMessageQuery":
         """Return dicts instead of models."""
         ...
 
-    def values_list(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"], flat: bool = False) -> "GroupMeMessageQuery":
+    def values_list(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"], flat: bool = False) -> "GroupMeMessageQuery":
         """Return tuples/values instead of models."""
         ...
 
@@ -358,9 +351,6 @@ class GroupMeMessageManager(QueryManager[GroupMeMessage]):
         attachments: list[dict] | None = None,
         attachments__in: list[list[dict]] | None = None,
         attachments__isnull: bool | None = None,
-        favorited_by: list[str] | None = None,
-        favorited_by__in: list[list[str]] | None = None,
-        favorited_by__isnull: bool | None = None,
         group: GroupMeGroup | None = None,
         group__in: list[GroupMeGroup] | None = None,
         group__isnull: bool | None = None,
@@ -432,9 +422,6 @@ class GroupMeMessageManager(QueryManager[GroupMeMessage]):
         attachments: list[dict] | None = None,
         attachments__in: list[list[dict]] | None = None,
         attachments__isnull: bool | None = None,
-        favorited_by: list[str] | None = None,
-        favorited_by__in: list[list[str]] | None = None,
-        favorited_by__isnull: bool | None = None,
         group: GroupMeGroup | None = None,
         group__in: list[GroupMeGroup] | None = None,
         group__isnull: bool | None = None,
@@ -500,11 +487,11 @@ class GroupMeMessageManager(QueryManager[GroupMeMessage]):
         """Exclude objects matching field lookups."""
         ...
 
-    def values(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> GroupMeMessageQuery:
+    def values(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"]) -> GroupMeMessageQuery:
         """Return dicts instead of models."""
         ...
 
-    def values_list(self, *fields: Literal["attachments", "favorited_by", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"], flat: bool = False) -> GroupMeMessageQuery:
+    def values_list(self, *fields: Literal["attachments", "group", "group_id", "id", "sender", "sender_id", "system", "text", "timestamp"], flat: bool = False) -> GroupMeMessageQuery:
         """Return tuples/values instead of models."""
         ...
 
@@ -645,7 +632,6 @@ class GroupMeMessageManager(QueryManager[GroupMeMessage]):
         client: Any | None = None,
         using: str | None = None,
         attachments: list[dict] | None = None,
-        favorited_by: list[str] | None = None,
         group: GroupMeGroup | None = None,
         group_id: str | None = None,
         id: str | None = None,

@@ -83,7 +83,6 @@ async def upsert_message(group_id: str, message: Message) -> None:
         existing.text = message.text
         existing.system = message.system
         existing.attachments = attachments
-        existing.favorited_by = message.favorited_by
         existing.timestamp = timestamp
         await existing.save()
     else:
@@ -94,7 +93,6 @@ async def upsert_message(group_id: str, message: Message) -> None:
             text=message.text,
             system=message.system,
             attachments=attachments,
-            favorited_by=message.favorited_by,
             timestamp=timestamp,
         )
 
