@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from oxyde import db
@@ -6,10 +9,18 @@ from structlog.stdlib import get_logger
 from meeshbot.config import DATABASE_URL, GROUPME_WEBHOOK_TOKEN
 from meeshbot.handlers.groupme import handle_groupme_webhook
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
+from meeshbot.scheduled.scheduler import scheduler_lifespan
 
 log = get_logger()
 
-app = FastAPI(lifespan=db.lifespan(default=DATABASE_URL))
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async with db.lifespan(default=DATABASE_URL)(app), scheduler_lifespan():
+        yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.api_route("/", methods=["GET", "HEAD"])
