@@ -1,7 +1,7 @@
 """Database utilities for GroupMe integration."""
 
 from datetime import UTC, datetime
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from oxyde.queries.aggregates import Count
 
@@ -62,11 +62,10 @@ async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:
 
 async def upsert_user(user_id: str, name: str, image_url: str | None) -> None:
     """Create or update a GroupMeUser by ID."""
-    obj, created = await GroupMeUser.objects.get_or_create(
+    user, created = await GroupMeUser.objects.get_or_create(
         id=user_id,
         defaults={"name": name, "image_url": image_url},
     )
-    user = cast(GroupMeUser, obj)
     if not created:
         user.name = name
         user.image_url = image_url
@@ -118,11 +117,11 @@ async def get_message_counts(group_id: str | None = None) -> list[MessageCount]:
         filters["group_id"] = group_id
 
     rows: list[_MessageCountRow] = (
-        await GroupMeMessage.objects.filter(**filters)
+        await GroupMeMessage.objects.filter(**filters)  # type:ignore[assignment,arg-type]
         .values("sender_id")
         .annotate(count=Count("id"))
         .group_by("sender_id")
-        .order_by("-count")
+        .order_by("-count")  # type:ignore[arg-type]
         .all()
     )
 

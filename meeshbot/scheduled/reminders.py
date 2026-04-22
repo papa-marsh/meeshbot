@@ -46,8 +46,8 @@ async def _send_reminder(reminder: Reminder) -> None:
     first_name = reminder.sender.name.split()[0]
     text = f"{_MENTION_PREFIX}{first_name}: {reminder.message}"
 
-    prefix_bytes = len(_MENTION_PREFIX.encode("utf-8"))
-    name_bytes = len(first_name.encode("utf-8"))
+    prefix_length = len(_MENTION_PREFIX) + 1
+    name_length = len(first_name)
 
     attachments: list[MessageAttachment] = [
         ReplyAttachment(
@@ -58,7 +58,7 @@ async def _send_reminder(reminder: Reminder) -> None:
         MentionsAttachment(
             type="mentions",
             user_ids=[reminder.sender.id],
-            loci=[(prefix_bytes, name_bytes)],
+            loci=[(prefix_length, name_length)],
         ),
     ]
 

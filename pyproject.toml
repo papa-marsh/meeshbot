@@ -28,7 +28,7 @@ dev = [
 cache-dir = ".cache/ruff"
 target-version = "py314"
 line-length = 100
-exclude = ["meeshbot/migrations"]
+exclude = ["meeshbot/migrations", "**/models/**.pyi"]
 
 [tool.ruff.lint]
 select = [
@@ -55,18 +55,16 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"app.py" = [
+    "S104", # Hardcoded bind all interfaces
+]
+"shell.py" = [
+    "F401", # Unused Import
+]
 "**/tests/**.py" = [
     "ARG001", # Unused arg
     "E501",   # Line length
     "S101",   # Assert statements
-]
-
-"app.py" = [
-    "S104", # Hardcoded bind all interfaces
-]
-
-"shell.py" = [
-    "F401", # Unused Import
 ]
 
 [tool.mypy]
@@ -87,4 +85,4 @@ warn_no_return = true
 allow_redefinition = true
 pretty = true
 show_error_codes = true
-exclude = ["\\.pyi$", "meeshbot/migrations/"]
+exclude = ["meeshbot/migrations/"]

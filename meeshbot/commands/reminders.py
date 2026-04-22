@@ -73,7 +73,7 @@ async def reminders(webhook: GroupMeWebhookPayload) -> None:
     if public:
         filters["group_id"] = webhook.group_id
 
-    pending = await Reminder.objects.filter(**filters).order_by("eta").all()
+    pending = await Reminder.objects.filter(**filters).order_by("eta").all()  # type:ignore[arg-type]
 
     client = GroupMeClient()
 

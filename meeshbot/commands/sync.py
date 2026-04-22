@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from typing import cast
 
 from meeshbot.config import GROUPME_TOKEN
 from meeshbot.integrations.groupme.client import GroupMeClient
@@ -50,7 +49,6 @@ async def sync_groups(webhook: GroupMeWebhookPayload) -> None:
                 "created_at": datetime.fromtimestamp(group.created_at, tz=UTC),
             },
         )
-        group_obj = cast(GroupMeGroup, group_obj)
 
         if not created:
             group_obj.name = group.name
