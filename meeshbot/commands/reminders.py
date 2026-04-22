@@ -24,11 +24,11 @@ async def remindme(webhook: GroupMeWebhookPayload) -> None:
     if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
         await client.post_message(
             group_id=webhook.group_id,
-            text="Do it like this IDIOT:\n`/remindme <message> - <time>`",
+            text="Do it like this IDIOT:\n`/remindme <time> - <message>`",
         )
         return
 
-    message, time_str = parts[0].strip(), parts[1].strip()
+    time_str, message = parts[0].strip(), parts[1].strip()
 
     eta_iso = await AnthropicClient(model=ClaudeModel.OPUS).resolve_timestamp(time_str)
 
