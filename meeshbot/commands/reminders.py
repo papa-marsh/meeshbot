@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import cast
 
 from meeshbot.config import TIMEZONE
 from meeshbot.integrations.anthropic.client import ERROR_OUTPUT, AnthropicClient, ClaudeModel
@@ -73,7 +72,7 @@ async def reminders(webhook: GroupMeWebhookPayload) -> None:
     if public:
         filters["group_id"] = webhook.group_id
 
-    pending = await Reminder.objects.filter(**filters).order_by("eta").all()  # type:ignore[arg-type]
+    pending = await Reminder.objects.filter(**filters).order_by("eta").join("sender").all()  # type:ignore[arg-type]
 
     client = GroupMeClient()
 
@@ -86,8 +85,10 @@ async def reminders(webhook: GroupMeWebhookPayload) -> None:
 
     lines = ["📋 Upcoming Reminders:\n"]
     for reminder in pending:
-        user = cast(GroupMeUser, reminder.sender)
-        first_name = user.name.split()[0]
+        if not isinstance(reminder.sender, GroupMeUser):
+            raise TypeError
+
+        first_name = reminder.sender.name.split()[0]
         line_text = f'{first_name} - {verbose_datetime(reminder.eta)}\n"{reminder.message}"'
         if not public:
             group = await GroupMeGroup.objects.get(id=reminder.group_id)
