@@ -2,15 +2,13 @@ from http import HTTPMethod
 from typing import Any
 
 import httpx
-from structlog.stdlib import get_logger
 
 from meeshbot.config import GROUPME_TOKEN
 from meeshbot.integrations.groupme.queries import get_bot_id
 from meeshbot.integrations.groupme.types import Group, Message, MessageAttachment
+from meeshbot.utils.logging import log
 
 BASE_URL = "https://api.groupme.com/v3"
-
-log = get_logger()
 
 
 class GroupMeClient:

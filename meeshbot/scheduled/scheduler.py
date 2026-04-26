@@ -5,11 +5,9 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import-untyped]
-from structlog.stdlib import get_logger
 
 from meeshbot.scheduled.reminders import send_due_reminders
-
-log = get_logger()
+from meeshbot.utils.logging import log
 
 
 async def _tick() -> None:

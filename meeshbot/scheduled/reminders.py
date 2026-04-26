@@ -1,7 +1,5 @@
 """Reminder dispatcher — called by the scheduler to send due reminders."""
 
-from structlog.stdlib import get_logger
-
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.types import (
     MentionsAttachment,
@@ -12,8 +10,7 @@ from meeshbot.models import Reminder
 from meeshbot.models.group import GroupMeGroup
 from meeshbot.models.user import GroupMeUser
 from meeshbot.utils.dates import local_now
-
-log = get_logger()
+from meeshbot.utils.logging import log
 
 _MENTION_PREFIX = "🔔 Reminder for "
 

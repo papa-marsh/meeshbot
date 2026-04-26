@@ -4,14 +4,14 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from oxyde import db
-from structlog.stdlib import get_logger
 
 from meeshbot.config import DATABASE_URL, GROUPME_WEBHOOK_TOKEN
 from meeshbot.handlers.groupme import handle_groupme_webhook
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.scheduled.scheduler import scheduler_lifespan
+from meeshbot.utils.logging import configure_logging, log
 
-log = get_logger()
+configure_logging()
 
 
 @asynccontextmanager
