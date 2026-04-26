@@ -5,7 +5,7 @@ deploy:
     docker compose down && \
     docker compose up -d --build && \
     sleep 1 && \
-    docker exec meeshbot uv run oxyde migrate \
+    docker exec meeshbot uv run oxyde migrate && \
     just logs
 
 logs:
