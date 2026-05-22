@@ -5,7 +5,11 @@ HELP_MESSAGE = """Command List:
 
 /help: Shows this message.
 
-/roll: Rolls any number of any-sided dice (eg. 4d20 rolls four 20-sided dice)."""
+/roll: Rolls any number of any-sided dice (eg. 4d20 rolls four 20-sided dice).
+
+/remindme <when> - <message>: Send a reminder at a given day/time
+
+/scoreboard: Message count leaderboard"""
 
 
 async def help(webhook: GroupMeWebhookPayload) -> None:
