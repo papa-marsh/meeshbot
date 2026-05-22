@@ -71,6 +71,6 @@ async def _send_reminder(reminder: Reminder) -> None:
     log.info(
         "Reminder sent",
         reminder_id=reminder.id,
-        group_id=reminder.group.id,
-        sender_id=reminder.sender.id,
+        group_id=reminder.group_id,
+        sender_id=reminder.sender_id,
     )
