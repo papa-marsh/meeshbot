@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-from meeshbot.config import GROUPME_TOKEN
+from meeshbot.config import GROUPME_TOKEN, TESTING_GROUP_ID
 from meeshbot.integrations.groupme.queries import get_bot_id
 from meeshbot.integrations.groupme.types import Group, Message, MessageAttachment
 from meeshbot.utils.logging import log
@@ -15,7 +15,12 @@ class GroupMeClient:
     def __init__(self, api_token: str | None = None) -> None:
         self.api_token = api_token or GROUPME_TOKEN
 
-    async def _get(self, path: str, params: dict[str, Any] | None = None) -> list | dict:
+    async def _get(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+    ) -> tuple[list | dict, int]:
+        """Send a GET request. Returns (<data>, <status>)"""
         url = f"{BASE_URL}{path}"
         request_params = {"token": self.api_token, **(params or {})}
 
@@ -28,13 +33,20 @@ class GroupMeClient:
             )
         log.debug("Received GroupMe response", status=response.status_code, url=str(response.url))
 
+        if response.status_code == 401:
+            log.error("GroupMe API returned 401 Unauthorized", url=url)
+            await self.post_message(
+                group_id=TESTING_GROUP_ID,
+                text="Received 401 from the GroupMe API - Is the token expired?",
+            )
+
         response.raise_for_status()
         data = response.json()["response"]
 
         if not isinstance(data, list | dict):
             raise TypeError
 
-        return data
+        return data, response.status_code
 
     async def _post(self, path: str, json: dict[str, Any] | None = None) -> dict | None:
         url = f"{BASE_URL}{path}"
@@ -81,12 +93,12 @@ class GroupMeClient:
             "page": page,
             "per_page": per_page,
         }
-        data = await self._get("/groups", params)
+        data, _status = await self._get("/groups", params)
 
         return [Group.model_validate(g) for g in data]
 
     async def get_group(self, group_id: str) -> Group:
-        data = await self._get(f"/groups/{group_id}")
+        data, _status = await self._get(f"/groups/{group_id}")
 
         return Group.model_validate(data)
 
@@ -107,18 +119,10 @@ class GroupMeClient:
         if after_id is not None:
             params["after_id"] = after_id
 
-        async with httpx.AsyncClient() as client:
-            url = f"{BASE_URL}/groups/{group_id}/messages"
-            request_params = {"token": self.api_token, **params}
-            log.debug("Sending request to GroupMe", method=HTTPMethod.GET, url=url)
-            response = await client.get(url, params=request_params, timeout=10)
-        log.debug("Received GroupMe response", status=response.status_code, url=str(response.url))
+        data, status = await self._get(f"/groups/{group_id}/messages", params)
 
-        if response.status_code == 304:
+        if status == 304:
             return []
-
-        response.raise_for_status()
-        data = response.json()["response"]
 
         if not isinstance(data, dict):
             raise TypeError
