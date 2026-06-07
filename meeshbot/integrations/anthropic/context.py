@@ -51,6 +51,7 @@ Use these as calibration points. Interpolate between them.
 **50-74**:
 - Moderate signal that MeeshBot should respond
 - Bot response would be helpful even though not already engaged in the conversation
+- Questions of objective fact (e.g. "what time is the tigers game?")
 - Somebody's getting roasted and the bot has an opportunity to pile on
 
 **25-49**:
