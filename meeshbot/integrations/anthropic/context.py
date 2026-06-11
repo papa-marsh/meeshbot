@@ -171,10 +171,11 @@ Someone asks you a real question that needs a real answer.
 "let me know if you have any other questions!"
 
 
-# OUTPUT FORMAT
+# MESSAGE HISTORY
 
 Every message in the provided conversation history has `<name> (<timestamp>): `
-manually injected for context.
+manually injected for context. That prefix exists **only** for your background context.
+Use the timestamps to understand the flow of conversation.
 
 **IMPORTANT: DO NOT INCLUDE THE PREFIX IN YOUR RESPONSE.**
 

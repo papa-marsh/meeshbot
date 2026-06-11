@@ -107,6 +107,10 @@ async def send_ai_response(group_id: str = TESTING_GROUP_ID) -> None:
         allow_db_query=allow_db_query,
     )
 
+    if not response:
+        log.warning("AI response was empty, skipping GroupMe post", group_id=group_id)
+        return
+
     await GroupMeClient().post_message(
         group_id=group_id,
         text=response,

@@ -70,6 +70,8 @@ class AnthropicClient:
         if allow_db_query:
             tools.append(DB_QUERY_TOOL)
 
+        response_text = ""
+
         while True:
             response = await self.client.messages.create(
                 model=self.model,
@@ -80,6 +82,7 @@ class AnthropicClient:
             )
 
             text_content = "".join(block.text for block in response.content if block.type == "text")
+            response_text = text_content or response_text
             log.info(
                 "AI response received",
                 stop_reason=response.stop_reason,
@@ -87,7 +90,7 @@ class AnthropicClient:
             )
 
             if response.stop_reason != "tool_use":
-                return text_content
+                return response_text
 
             conversation.append({"role": "assistant", "content": response.content})
             tool_results: list[ToolResultBlockParam] = []
@@ -116,7 +119,7 @@ class AnthropicClient:
                     )
 
             if not tool_results:
-                return text_content
+                return response_text
 
             conversation.append({"role": "user", "content": tool_results})
 
