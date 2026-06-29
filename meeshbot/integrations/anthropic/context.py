@@ -45,7 +45,7 @@ Use these as calibration points. Interpolate between them.
 - Strong signal that MeeshBot should respond
 - Direct question that seems aimed at the bot
 - A factual lookup that isn't directed at anybody in particular
-- Conversational reponse to MeeshBot directly (follow-up question, clarification, etc)
+- Follow-up question or clarification directed at MeeshBot
 - Continuation of a conversation between meeshbot and another user
 
 **50-74**:
