@@ -7,9 +7,9 @@ DATABASES = {
 MODELS = [
     "meeshbot.models.group",
     "meeshbot.models.user",
-    "meeshbot.models.bot",
     "meeshbot.models.message",
     "meeshbot.models.reminder",
+    "meeshbot.models.flag",
 ]
 
 MIGRATIONS_DIR = "meeshbot/migrations"

@@ -7,7 +7,13 @@ HELP_MESSAGE = """Command List:
 
 /roll: Rolls any number of any-sided dice (eg. 4d20 rolls four 20-sided dice).
 
-/remindme <when> - <message>: Send a reminder at a given day/time
+/remindme <when> - <message>: Send a reminder at a given day/time.
+
+/reminders: List active reminders.
+
+/timeout <how long>: Pause MeeshBot's AI replies (eg. /timeout for three hours).
+
+/timeout done: Resume AI replies.
 
 /scoreboard: Message count leaderboard"""
 

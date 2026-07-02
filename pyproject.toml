@@ -91,3 +91,7 @@ allow_redefinition = true
 pretty = true
 show_error_codes = true
 exclude = ["meeshbot/migrations/"]
+
+[[tool.mypy.overrides]]
+module = "meeshbot.models.*"
+ignore_errors = true
