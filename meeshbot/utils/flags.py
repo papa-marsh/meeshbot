@@ -1,6 +1,6 @@
 """Persistent boolean flags with optional expiry, checked lazily on read."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from meeshbot.models import Flag
@@ -23,7 +23,7 @@ async def flag_enabled(key: FlagKey) -> bool:
     flag = await Flag.objects.get_or_none(key=key.value)
     if flag is None or not flag.value:
         return False
-    if flag.expires_at is not None and flag.expires_at <= local_now():
+    if flag.expires_at is not None and flag.expires_at.replace(tzinfo=UTC) <= local_now():
         await _set_flag(key, value=False, expires_at=None)
         return False
     return True

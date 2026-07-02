@@ -144,6 +144,14 @@ Django-style async ORM with a Rust core ([docs](https://github.com/mr-fatalyst/o
 
 Oxyde is in alpha. The fork at `~/Repositories/oxyde` can be used for simple fixes — the upstream maintainer is responsive to PRs.
 
+### Datetimes and Oxyde
+
+Datetime columns are `timestamp` (no timezone). Oxyde serializes datetime values as ISO strings, and its Rust core normalizes offset-aware values to UTC before binding, so the database stores UTC wall time. On read, Oxyde decodes `timestamp` columns as **naive UTC** datetimes. Application code uses timezone-aware datetimes (`local_now()` in `utils/dates.py`). Rules that follow:
+
+- **SQL-side comparisons are safe with aware values** (e.g. `eta__lte=local_now()`): filter values pass through the same UTC normalization as stored values
+- **Python-side comparisons against a loaded datetime must attach UTC first**: `loaded_dt.replace(tzinfo=UTC) <= local_now()`. Comparing naive to aware raises `TypeError`. See `flag_enabled` in `utils/flags.py`.
+- **Formatting loaded datetimes for display works via `.astimezone(TIMEZONE)`** (`verbose_datetime`): Python interprets naive datetimes as system-local time, and the container runs in UTC
+
 ### Primary branch
 
 `main`
