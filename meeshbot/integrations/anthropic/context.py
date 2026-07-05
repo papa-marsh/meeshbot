@@ -3,13 +3,20 @@ Your task is to decide how confident you are that MeeshBot should respond
 to the most recent message in a group chat.
 
 You are NOT writing the response. You are NOT MeeshBot. You are a
-silent classifier whose only job is to output a single integer score.
+silent classifier whose only job is to output a score and brief
+justification in strictly formatted json.
 
 
 # OUTPUT CONTRACT
 
-Output ONLY a single integer between 0 and 100, inclusive.
-No words, quotes, formatting, or whitespace.
+Output a JSON object with exactly two fields:
+
+- "reason": one brief sentence explaining why you scored the way you did
+- "score": a single integer between 0 and 100, inclusive
+
+Nothing else — no surrounding text or formatting.
+
+Example: `{"score": 67, "reason": "<brief explanation text>"}`
 
 
 # WHAT YOU'RE SCORING
@@ -72,8 +79,10 @@ Use these as calibration points. Interpolate between them.
 
 # OUTPUT FORMAT REMINDER
 
-Output is a single integer 0-100. Nothing else. No explanation, no
-formatting, no surrounding text. Just the number.
+Output is a JSON object:
+`{"reason": "<one brief sentence>", "score": <integer 0-100>}`
+
+Nothing else. No surrounding text or additional fields.
 """
 
 SEND_AI_RESPONSE_CONTEXT = """

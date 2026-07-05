@@ -31,7 +31,8 @@ class _ResolvedTimestamp(BaseModel):
     iso: str
 
 
-class _ResponseLikelihood(BaseModel):
+class ResponseLikelihood(BaseModel):
+    reason: str
     score: int
 
 
@@ -160,9 +161,14 @@ class AnthropicClient:
 
         return response.parsed_output.iso
 
-    async def score_response_likelihood(self, history_text: str, context: str) -> int:
+    async def score_response_likelihood(
+        self,
+        history_text: str,
+        context: str,
+    ) -> ResponseLikelihood:
         """
-        Score how likely it is that MeeshBot should respond, on a 0-100 scale.
+        Score how likely it is that MeeshBot should respond, on a 0-100 scale,
+        with a brief sentence explaining the score.
 
         Chat history is passed as a single user-role text block (it is evidence
         to classify, not a conversation to participate in). The system prompt
@@ -170,13 +176,13 @@ class AnthropicClient:
         """
         response = await self.client.messages.parse(
             model=self.model,
-            max_tokens=16,
+            max_tokens=200,
             system=context,
             messages=[{"role": "user", "content": history_text}],
-            output_format=_ResponseLikelihood,
+            output_format=ResponseLikelihood,
         )
 
         if response.parsed_output is None:
             raise ValueError("Failed to score response likelihood")
 
-        return response.parsed_output.score
+        return response.parsed_output

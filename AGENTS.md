@@ -38,7 +38,7 @@ Both live in `meeshbot/integrations/anthropic/chat.py`. System prompts are strin
 
 When adding new LLM features, decide which framing fits and pass history accordingly.
 
-**Structured outputs:** For LLM calls needing strict-shape output, use `AsyncAnthropic.messages.parse` with a private Pydantic model as `output_format`. Two examples exist on `AnthropicClient`: `resolve_timestamp` → `_ResolvedTimestamp`, `score_response_likelihood` → `_ResponseLikelihood`. Read the result via `response.parsed_output`. Raise on `None`; don't silently fall through.
+**Structured outputs:** For LLM calls needing strict-shape output, use `AsyncAnthropic.messages.parse` with a Pydantic model as `output_format`. Two examples exist on `AnthropicClient`: `resolve_timestamp` → `_ResolvedTimestamp`, `score_response_likelihood` → `ResponseLikelihood` (public because callers receive the parsed model; keep output models private when the method returns an extracted value). Read the result via `response.parsed_output`. Raise on `None`; don't silently fall through. Field declaration order is generation order — put a `reason`/justification field before the answer field when reasoning-first improves output quality.
 
 ### Scheduler
 

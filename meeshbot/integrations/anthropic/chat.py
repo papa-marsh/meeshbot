@@ -75,14 +75,19 @@ async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOL
     prompt_lines.append(most_recent_message)
 
     client = AnthropicClient(model=ClaudeModel.HAIKU)
-    score = await client.score_response_likelihood(
+    likelihood = await client.score_response_likelihood(
         history_text="\n".join(prompt_lines),
         context=SHOULD_RESPOND_CONTEXT,
     )
 
-    log.info("LLM response confidence determined", confidence=score, message=most_recent_message)
+    log.info(
+        "LLM response confidence determined",
+        confidence=likelihood.score,
+        reason=likelihood.reason,
+        message=most_recent_message,
+    )
 
-    return score >= threshold
+    return likelihood.score >= threshold
 
 
 async def send_ai_response(group_id: str = TESTING_GROUP_ID) -> None:
