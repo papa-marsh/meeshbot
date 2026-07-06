@@ -1,14 +1,10 @@
-import uuid
-from datetime import datetime
-
-from meeshbot.config import TIMEZONE
-from meeshbot.integrations.anthropic.client import ERROR_OUTPUT, AnthropicClient, ClaudeModel
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import is_public_group
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.models import GroupMeUser, Reminder
 from meeshbot.models.group import GroupMeGroup
-from meeshbot.utils.dates import local_now, verbose_datetime
+from meeshbot.utils.dates import verbose_datetime
+from meeshbot.utils.reminders import PastTimeError, UnresolvableTimeError, create_reminder
 
 
 async def remindme(webhook: GroupMeWebhookPayload) -> None:
@@ -29,34 +25,26 @@ async def remindme(webhook: GroupMeWebhookPayload) -> None:
 
     time_str, message = parts[0].strip(), parts[1].strip()
 
-    eta_iso = await AnthropicClient(model=ClaudeModel.OPUS).resolve_timestamp(time_str)
-
-    if eta_iso.strip() == ERROR_OUTPUT:
+    try:
+        eta = await create_reminder(
+            group_id=webhook.group_id,
+            sender_id=webhook.user_id,
+            trigger_message_id=webhook.id,
+            message=message,
+            time_description=time_str,
+        )
+    except UnresolvableTimeError:
         await client.post_message(
             group_id=webhook.group_id,
             text="I can't figure out when that is... IDIOT",
         )
         return
-
-    eta = datetime.fromisoformat(eta_iso).replace(tzinfo=TIMEZONE)
-    now = local_now()
-
-    if eta <= now:
+    except PastTimeError:
         await client.post_message(
             group_id=webhook.group_id,
             text="I can't remind you of something in the past IDIOT",
         )
         return
-
-    await Reminder.objects.create(
-        id=str(uuid.uuid4()),
-        group_id=webhook.group_id,
-        sender_id=webhook.user_id,
-        command_message_id=webhook.id,
-        message=message,
-        eta=eta,
-        created_at=now,
-    )
 
     first_name = webhook.name.split()[0]
     await client.post_message(

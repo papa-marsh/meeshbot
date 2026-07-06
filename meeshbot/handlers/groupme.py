@@ -30,4 +30,4 @@ async def _handle_ai_response(webhook: GroupMeWebhookPayload) -> None:
         return
 
     if await should_respond(webhook.group_id):
-        await send_ai_response(webhook.group_id)
+        await send_ai_response(webhook.group_id, trigger=webhook)

@@ -41,13 +41,23 @@ MeeshBot specifically, he should respond in kind.
 
 # EVALUATION GUIDANCE
 
-Meeshbot should **not** be over-eager to respond. Less is more.
+Meeshbot should not be over-eager to respond. Less is more;
 Nobody likes a bot that interrupts the natural flow of the chat.
 
-Just because Meeshbot said something recently does **not** mean that
+Just because Meeshbot said something recently does not mean that
 subsequent messages are directed back at him. Make a contribution that counts
-and then get out of the way. Do not interrupt the natural flow of
-human conversation.
+and then get out of the way. Do not interrupt the flow of human conversation.
+
+# TOOLS
+
+Meeshbot has some MCP tools available that make him uniquely positioned to contribute
+in certain situations. Opportunities to invoke these tools in a clearly useful
+way should promote a higher score evaluation.
+
+- **Reminders**: Meeshbot can create new reminders for a future date and time that
+  will fire at their due date.
+- **Database lookups**: Meeshbot can use SQL to query things like historical messages,
+  groups and users, and existing reminders.
 
 
 # SCORE ANCHORS
@@ -61,10 +71,13 @@ Use these as calibration points. Interpolate between them.
 **75-89** (Strong signal that MeeshBot should respond):
 - Direct questions aimed at Meeshbot
 - Follow-up or clarification obviously directed at MeeshBot in particular
+- A group member has asked to be reminded of something at a time in the future
+- Someone has asked when their reminder is due or for a list of all reminders
 
 **50-74** (Moderate signal that MeeshBot should respond):
 - Questions of objective fact (e.g. "what time is the tigers game?")
 - Somebody's getting roasted and the bot has an opportunity to pile on
+- Someone is trying to recall when a certain message was sent in the past
 
 **25-49** (Unlikely that MeeshBot should respond):
 - Conversation is happening and MeeshBot isn't involved
@@ -213,21 +226,21 @@ Use this tool for read-only queries for any info relevant to the task at hand.
 ## Schema
 
 ### groupmegroup
-Represents a GroupMe chat group (There are 5-10 total).
+Represents a GroupMe chat group (Table size: 5-10 rows).
 - id (text, PK): GroupMe's group ID
 - name (text): display name of the group
 - image_url (text, nullable): group avatar URL
 - created_at (timestamptz): when the group was first seen by meeshbot
 
 ### groupmeuser
-Represents a GroupMe chat member (There are 10-20 total).
+Represents a GroupMe chat member (Table size: 10-20 rows).
 - id (text, PK): GroupMe's user ID
 - name (text): display name
 - image_url (text, nullable): avatar URL
 - muted (boolean): whether the bot ignores this user's messages
 
 ### groupmemessage
-Every message sent in any tracked group (There are 10k-100k total).
+Every message sent in any tracked group (Table size: 10k-100k).
 - id (text, PK): GroupMe's message ID
 - group_id (text, FK → groupmegroup.id): which group the message was sent in (JOIN to get group name)
 - sender_id (text, FK → groupmeuser.id): who sent the message (JOIN to get user name)
@@ -235,4 +248,35 @@ Every message sent in any tracked group (There are 10k-100k total).
 - system (boolean): true for system events (membership changes, etc.), false for user messages
 - attachments (jsonb): array of attachment objects from GroupMe (images, mentions, etc.)
 - timestamp (timestamptz): when the message was sent (stored in UTC but the group is in the Eastern US)
+
+### reminder
+Scheduled reminders, created via the /remindme command or the create_reminder tool (Table size: 10-100 rows).
+- id (text, PK): UUID
+- group_id (text, FK → groupmegroup.id): group the reminder will be delivered in
+- sender_id (text, FK → groupmeuser.id): who the reminder is for (JOIN to get user name)
+- command_message_id (text): ID of the message that requested the reminder
+- message (text): reminder body text
+- eta (timestamp): when the reminder fires (stored in UTC but the group is in the Eastern US)
+- created_at (timestamp): when the reminder was created (stored in UTC)
+- sent (boolean): true once the reminder has been delivered; pending reminders are sent=false
+"""
+
+CREATE_REMINDER_TOOL_DESCRIPTION = """
+Create a reminder that MeeshBot will deliver to the group chat at a future time.
+
+This is the same mechanism as the /remindme slash command. The reminder is attributed
+to the sender of the most recent message (the one you are responding to): when it fires,
+MeeshBot posts the reminder text as a reply to that message and @-mentions that person.
+
+## Guidelines
+
+- Use this only when someone clearly asks to be reminded of something. Never create
+  reminders speculatively.
+- **The time is resolved server-side** so pass the requester's natural-language phrasing
+  (e.g. "in 20 minutes", "tomorrow morning"). Do not attempt to parse the time yourself.
+- The tool result includes the resolved delivery time on success. Confirm it to the
+  requester in your reply so they can catch a misinterpreted time.
+- If the tool returns an error (unresolvable or past time), tell the requester
+  conversationally; don't retry with a guessed time.
+- To look up existing reminders instead of creating one, use the query_database tool.
 """

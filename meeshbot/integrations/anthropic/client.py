@@ -7,9 +7,12 @@ from pydantic import BaseModel
 
 from meeshbot.config import ANTHROPIC_API_KEY, TIMEZONE
 from meeshbot.integrations.anthropic.tools import (
+    CREATE_REMINDER_TOOL,
     DB_QUERY_TOOL,
     WEBFETCH_TOOL,
     WEBSEARCH_TOOL,
+    ReminderContext,
+    execute_create_reminder,
     execute_db_query,
 )
 from meeshbot.utils.logging import log
@@ -62,6 +65,7 @@ class AnthropicClient:
         max_tokens: int = DEFAULT_MAX_TOKENS,
         allow_webfetch: bool = True,
         allow_db_query: bool = True,
+        reminder_context: ReminderContext | None = None,
     ) -> str:
         conversation = list(messages)
         tools: list[ToolUnionParam] = []
@@ -70,6 +74,8 @@ class AnthropicClient:
             tools.extend([WEBSEARCH_TOOL, WEBFETCH_TOOL])
         if allow_db_query:
             tools.append(DB_QUERY_TOOL)
+        if reminder_context is not None:
+            tools.append(CREATE_REMINDER_TOOL)
 
         response_text = ""
 
@@ -105,6 +111,30 @@ class AnthropicClient:
                     sql = str(raw_input.get("sql", "")) if isinstance(raw_input, dict) else ""
                     try:
                         result_content = await execute_db_query(sql)
+                        is_error = result_content.startswith("Error:")
+                    except Exception as exc:
+                        result_content = f"Error: {exc}"
+                        is_error = True
+
+                    tool_results.append(
+                        ToolResultBlockParam(
+                            type="tool_result",
+                            tool_use_id=block.id,
+                            content=result_content,
+                            is_error=is_error,
+                        )
+                    )
+                elif block.name == CREATE_REMINDER_TOOL["name"] and reminder_context is not None:
+                    raw_input = block.input
+                    is_dict = isinstance(raw_input, dict)
+                    time_description = str(raw_input.get("time", "")) if is_dict else ""
+                    reminder_message = str(raw_input.get("message", "")) if is_dict else ""
+                    try:
+                        result_content = await execute_create_reminder(
+                            reminder_context,
+                            time_description,
+                            reminder_message,
+                        )
                         is_error = result_content.startswith("Error:")
                     except Exception as exc:
                         result_content = f"Error: {exc}"

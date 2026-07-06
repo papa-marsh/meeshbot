@@ -6,8 +6,10 @@ from meeshbot.integrations.anthropic.context import (
     SEND_AI_RESPONSE_CONTEXT,
     SHOULD_RESPOND_CONTEXT,
 )
+from meeshbot.integrations.anthropic.tools import ReminderContext
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import get_message_history, is_public_group
+from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.models.user import GroupMeUser
 from meeshbot.utils.logging import log
 
@@ -90,7 +92,10 @@ async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOL
     return likelihood.score >= threshold
 
 
-async def send_ai_response(group_id: str = TESTING_GROUP_ID) -> None:
+async def send_ai_response(
+    group_id: str = TESTING_GROUP_ID,
+    trigger: GroupMeWebhookPayload | None = None,
+) -> None:
     context = SEND_AI_RESPONSE_CONTEXT
     messages = await build_message_history(group_id)
 
@@ -104,12 +109,23 @@ async def send_ai_response(group_id: str = TESTING_GROUP_ID) -> None:
         )
     )
 
+    reminder_context = (
+        ReminderContext(
+            group_id=group_id,
+            sender_id=trigger.user_id,
+            trigger_message_id=trigger.id,
+        )
+        if trigger is not None
+        else None
+    )
+
     allow_db_query = not is_public_group(group_id)
     response = await AnthropicClient().generate_response(
         messages=messages,
         context=context,
         allow_webfetch=True,
         allow_db_query=allow_db_query,
+        reminder_context=reminder_context,
     )
 
     if not response:
