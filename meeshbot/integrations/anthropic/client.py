@@ -19,8 +19,8 @@ from meeshbot.utils.logging import log
 
 
 class ClaudeModel(StrEnum):
-    OPUS = "claude-opus-4-7"
-    SONNET = "claude-sonnet-4-6"
+    OPUS = "claude-opus-5"
+    SONNET = "claude-sonnet-5"
     HAIKU = "claude-haiku-4-5"
 
 
