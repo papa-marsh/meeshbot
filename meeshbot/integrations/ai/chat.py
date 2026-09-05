@@ -68,7 +68,7 @@ async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOL
     most_recent_message = str(message_history[-1]["content"])
     prompt_lines.append(most_recent_message)
 
-    client = AIClient(model=AIModel.CHEAP)
+    client = AIClient(model=AIModel.BASIC)
     likelihood = await client.score_response_likelihood(
         history_text="\n".join(prompt_lines),
         context=SHOULD_RESPOND_CONTEXT,

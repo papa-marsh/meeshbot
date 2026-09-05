@@ -30,7 +30,7 @@ class ResponseLikelihood(BaseModel):
 
 
 class AIClient:
-    def __init__(self, model: AIModel = AIModel.BASIC) -> None:
+    def __init__(self, model: AIModel = AIModel.POWERFUL) -> None:
         self.provider: AIProvider
         match AI_PROVIDER:
             case "anthropic":
