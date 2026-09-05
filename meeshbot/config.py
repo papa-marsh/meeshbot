@@ -3,6 +3,8 @@ from zoneinfo import ZoneInfo
 
 GROUPME_TOKEN = os.environ.get("GROUPME_TOKEN", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+AI_PROVIDER = os.environ.get("AI_PROVIDER", "anthropic")
 BALLDONTLIE_API_KEY = os.environ.get("BALLDONTLIE_API_KEY", "")
 
 GROUPME_WEBHOOK_TOKEN = os.environ.get("GROUPME_WEBHOOK_TOKEN", "")

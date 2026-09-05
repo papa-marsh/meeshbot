@@ -8,13 +8,13 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from anthropic.types import MessageParam
 from oxyde import db
 
 from meeshbot.config import DATABASE_URL, TESTING_GROUP_ID, TIMEZONE
-from meeshbot.integrations.anthropic import chat as anthropic_chat
-from meeshbot.integrations.anthropic.chat import build_message_history, send_ai_response
-from meeshbot.integrations.anthropic.client import AnthropicClient
+from meeshbot.integrations.ai import chat as ai_chat
+from meeshbot.integrations.ai.chat import build_message_history, send_ai_response
+from meeshbot.integrations.ai.client import AIClient
+from meeshbot.integrations.ai.types import AIMessage
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.models import GroupMeGroup, GroupMeMessage, GroupMeUser, Reminder
 from meeshbot.utils.logging import log
@@ -22,7 +22,7 @@ from meeshbot.utils.logging import log
 asyncio.run(db.init(default=DATABASE_URL))
 
 groupme = GroupMeClient()
-anthropic = AnthropicClient()
+ai = AIClient()
 
 
 async def mock_ai_response(
@@ -31,10 +31,10 @@ async def mock_ai_response(
 ) -> None:
     """Trigger the AI response pipeline without sending anything to GroupMe"""
 
-    async def _build_message_history_with_injection(gid: str, **kwargs: Any) -> list[MessageParam]:
+    async def _build_message_history_with_injection(gid: str, **kwargs: Any) -> list[AIMessage]:
         history = await build_message_history(gid, **kwargs)
         history.append(
-            AnthropicClient.build_message_history_entry(
+            AIClient.build_message_history_entry(
                 sender_name="Marshall",
                 timestamp=datetime.now(tz=TIMEZONE),
                 message=message,
@@ -44,7 +44,7 @@ async def mock_ai_response(
 
     with (
         patch.object(
-            anthropic_chat,
+            ai_chat,
             "build_message_history",
             side_effect=_build_message_history_with_injection,
         ),

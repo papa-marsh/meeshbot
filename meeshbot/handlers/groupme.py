@@ -1,5 +1,5 @@
 from meeshbot.commands.registry import get_command_func
-from meeshbot.integrations.anthropic.chat import send_ai_response, should_respond
+from meeshbot.integrations.ai.chat import send_ai_response, should_respond
 from meeshbot.integrations.groupme.queries import sync_message_to_db
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.utils.flags import FlagKey, flag_enabled

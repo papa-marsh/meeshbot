@@ -1,14 +1,13 @@
 from dataclasses import dataclass
 
-from anthropic import types
-
-from meeshbot.integrations.anthropic.context import CREATE_REMINDER_TOOL_DESCRIPTION
-from meeshbot.integrations.anthropic.tools.db import ERROR_PREFIX
+from meeshbot.integrations.ai.context import CREATE_REMINDER_TOOL_DESCRIPTION
+from meeshbot.integrations.ai.tools.db import ERROR_PREFIX
+from meeshbot.integrations.ai.types import ToolDefinition
 from meeshbot.utils.dates import verbose_datetime
 from meeshbot.utils.logging import log
 from meeshbot.utils.reminders import PastTimeError, UnresolvableTimeError, create_reminder
 
-CREATE_REMINDER_TOOL: types.ToolParam = {
+CREATE_REMINDER_TOOL: ToolDefinition = {
     "name": "create_reminder",
     "description": CREATE_REMINDER_TOOL_DESCRIPTION,
     "input_schema": {
@@ -27,6 +26,7 @@ CREATE_REMINDER_TOOL: types.ToolParam = {
             },
         },
         "required": ["time", "message"],
+        "additionalProperties": False,
     },
 }
 

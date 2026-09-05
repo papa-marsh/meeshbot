@@ -28,9 +28,10 @@ async def create_reminder(
     Returns the resolved ETA. Raises UnresolvableTimeError or PastTimeError when
     the time description can't produce a valid future timestamp.
     """
-    from meeshbot.integrations.anthropic.client import ERROR_OUTPUT, AnthropicClient, ClaudeModel
+    from meeshbot.integrations.ai.client import ERROR_OUTPUT, AIClient
+    from meeshbot.integrations.ai.types import AIModel
 
-    eta_iso = await AnthropicClient(model=ClaudeModel.OPUS).resolve_timestamp(time_description)
+    eta_iso = await AIClient(model=AIModel.POWERFUL).resolve_timestamp(time_description)
 
     if eta_iso.strip() == ERROR_OUTPUT:
         raise UnresolvableTimeError(time_description)

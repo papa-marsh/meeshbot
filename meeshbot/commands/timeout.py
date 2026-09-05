@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from meeshbot.config import TIMEZONE
-from meeshbot.integrations.anthropic.client import ERROR_OUTPUT, AnthropicClient, ClaudeModel
+from meeshbot.integrations.ai.client import ERROR_OUTPUT, AIClient
+from meeshbot.integrations.ai.types import AIModel
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.utils.dates import local_now, verbose_datetime
@@ -31,7 +32,7 @@ async def timeout(webhook: GroupMeWebhookPayload) -> None:
         )
         return
 
-    eta_iso = await AnthropicClient(model=ClaudeModel.OPUS).resolve_timestamp(body)
+    eta_iso = await AIClient(model=AIModel.POWERFUL).resolve_timestamp(body)
 
     if eta_iso.strip() == ERROR_OUTPUT:
         await client.post_message(

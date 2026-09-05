@@ -1,12 +1,11 @@
-from anthropic.types import MessageParam
-
 from meeshbot.config import TESTING_GROUP_ID
-from meeshbot.integrations.anthropic.client import AnthropicClient, ClaudeModel
-from meeshbot.integrations.anthropic.context import (
+from meeshbot.integrations.ai.client import AIClient
+from meeshbot.integrations.ai.context import (
     SEND_AI_RESPONSE_CONTEXT,
     SHOULD_RESPOND_CONTEXT,
 )
-from meeshbot.integrations.anthropic.tools import ReminderContext
+from meeshbot.integrations.ai.tools import ReminderContext
+from meeshbot.integrations.ai.types import AIMessage, AIModel
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import get_message_history, is_public_group
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
@@ -25,12 +24,8 @@ async def build_message_history(
     group_id: str,
     max_days: int = CHAT_HISTORY_MAX_DAYS,
     max_count: int = CHAT_HISTORY_MAX_COUNT,
-) -> list[MessageParam]:
-    """
-    Fetches message history for the specified group and
-    returns it in the format required by Anthropic's API
-    """
-    context_messages: list[MessageParam] = []
+) -> list[AIMessage]:
+    context_messages: list[AIMessage] = []
     message_history_desc = await get_message_history(max_days, max_count, group_id=group_id)
 
     sender_name_map = {}
@@ -42,7 +37,7 @@ async def build_message_history(
             user = await GroupMeUser.objects.get(id=user_id)
             sender_name_map[user_id] = user.name
 
-        message_entry = AnthropicClient.build_message_history_entry(
+        message_entry = AIClient.build_message_history_entry(
             sender_name=sender_name_map[user_id],
             timestamp=message.timestamp,
             message=message.text or "",
@@ -67,16 +62,13 @@ async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOL
 
     prompt_lines = []
     for message in message_history[:-1]:
-        if not isinstance(message["content"], str):
-            raise TypeError
-
         prompt_lines.append(message["content"])
 
     prompt_lines.append("\n--- The message you are evaluating is: ---\n")
     most_recent_message = str(message_history[-1]["content"])
     prompt_lines.append(most_recent_message)
 
-    client = AnthropicClient(model=ClaudeModel.HAIKU)
+    client = AIClient(model=AIModel.CHEAP)
     likelihood = await client.score_response_likelihood(
         history_text="\n".join(prompt_lines),
         context=SHOULD_RESPOND_CONTEXT,
@@ -100,7 +92,7 @@ async def send_ai_response(
     messages = await build_message_history(group_id)
 
     messages.append(
-        MessageParam(
+        AIMessage(
             role="user",
             content=(
                 "<-- Internal AI Note - not visible to user -->\n"
@@ -120,7 +112,7 @@ async def send_ai_response(
     )
 
     allow_db_query = not is_public_group(group_id)
-    response = await AnthropicClient().generate_response(
+    response = await AIClient().generate_response(
         messages=messages,
         context=context,
         allow_webfetch=True,

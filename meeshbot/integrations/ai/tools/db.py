@@ -1,13 +1,13 @@
 import json
 
 import asyncpg
-from anthropic import types
 
 from meeshbot.config import AI_DATABASE_URL
-from meeshbot.integrations.anthropic.context import DB_QUERY_TOOL_DESCRIPTION
+from meeshbot.integrations.ai.context import DB_QUERY_TOOL_DESCRIPTION
+from meeshbot.integrations.ai.types import ToolDefinition
 from meeshbot.utils.logging import log
 
-DB_QUERY_TOOL: types.ToolParam = {
+DB_QUERY_TOOL: ToolDefinition = {
     "name": "query_database",
     "description": DB_QUERY_TOOL_DESCRIPTION,
     "input_schema": {
@@ -22,6 +22,7 @@ DB_QUERY_TOOL: types.ToolParam = {
             }
         },
         "required": ["sql"],
+        "additionalProperties": False,
     },
 }
 

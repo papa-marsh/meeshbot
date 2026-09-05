@@ -1,6 +1,6 @@
 # meeshbot
 
-GroupMe bot that receives webhook events, persists messages, dispatches slash commands, and generates LLM-driven chat replies via Anthropic Claude. Runs in Docker on a mac mini. Python 3.14, FastAPI, Oxyde ORM, APScheduler, structlog, uv.
+GroupMe bot that receives webhook events, persists messages, dispatches slash commands, and generates LLM-driven chat replies via Anthropic or OpenAI. Runs in Docker on a mac mini. Python 3.14, FastAPI, Oxyde ORM, APScheduler, structlog, uv.
 
 ## Architecture
 
@@ -16,31 +16,30 @@ This chain lives in `meeshbot/handlers/groupme.py`. Each step is independent —
 
 GroupMe is the source of truth for messages. The webhook delivers them; meeshbot persists a local copy to Postgres for history queries (LLM context windows, scoreboards). The bot posts replies back to GroupMe via bot IDs — each GroupMe group has a dedicated bot ID mapped in `meeshbot/integrations/groupme/secrets.py`.
 
-### LLM two-prompt pipeline
+### AI providers and two-prompt pipeline
 
-Two-prompt pipeline, two different jobs:
+`meeshbot/integrations/ai/client.py` exposes `AIClient` to application code. It constructs the provider selected by `AI_PROVIDER` (`anthropic` by default, or `openai`). Only the selected provider's API key is required. Unknown provider values fail explicitly. All AI operations, including reminder and `/timeout` timestamp parsing, use this selection.
 
-1. **Classifier (`should_respond`)** — cheap Haiku call. Scores 0–100 how likely MeeshBot should reply. Only proceeds if the score meets a set threshold.
-2. **Responder (`send_ai_response`)** — stronger Sonnet call. Generates the actual reply, with `web_search` and `web_fetch` tools available.
+`AIProvider` in `ai/provider.py` is a protocol for text generation with tools and typed structured generation. `providers/anthropic.py` and `providers/openai.py` own SDK types, native web tools, and continuation state. Each operation opens and closes its SDK client; an `AIClient` can be reused. Application prompts, output models, history formatting, and tool availability belong to `AIClient`, not the providers.
 
-The classifier always runs on eligible messages; the responder only runs when the classifier clears the threshold. This keeps response quality high without paying the heavier model's cost on every message.
+Callers select capability tiers from `AIModel` in `ai/types.py`: `CHEAP` (Haiku/Luna), `BASIC` (Sonnet/Terra), `POWERFUL` (Opus/Sol), and `FRONTIER` (Fable/Astra). Concrete API model IDs live in each provider's `MODELS` mapping. `BASIC` is the client default. Tiers describe model capabilities, not application jobs.
 
-Both live in `meeshbot/integrations/anthropic/chat.py`. System prompts are string constants in `context.py` (`SHOULD_RESPOND_CONTEXT` and `SEND_AI_RESPONSE_CONTEXT`). Model choices and tuning values (history window size, threshold) are module constants in `chat.py`.
+The two-prompt pipeline in `ai/chat.py` keeps the more expensive responder off the ordinary message path:
 
-**Client-side tools and the agentic loop:** The responder has access to client-side tools (`query_database`, `create_reminder`) in addition to Anthropic's server-side tools (`web_search`, `web_fetch`). Server-side tools are handled transparently by Anthropic's infra. Client-side tools require an agentic loop in `AnthropicClient.generate_response`: when Claude returns `stop_reason: "tool_use"`, the method executes the tool, appends a `tool_result` user message, and calls the API again until `stop_reason` is `end_turn`. Tool definitions and executors live in the `tools/` package (`claude.py` for server-side web tools, `db.py` for `query_database`, `reminders.py` for `create_reminder`), re-exported from `tools/__init__.py`. The `query_database` tool connects via `AI_DATABASE_URL` (a read-only Postgres user) and executes raw SELECT queries; its description documents the schema, including the `reminder` table, so the LLM can look up reminders itself.
+1. **Classifier (`should_respond`):** selects `CHEAP`, scores response likelihood, and checks the configured threshold.
+2. **Responder (`send_ai_response`):** selects the default `BASIC` tier and generates a reply with web access and eligible client-side tools.
 
-**Tool identity and trust:** LLM tool inputs are never trusted with identity. `create_reminder` takes only a natural-language time and a message from the model; the group, sender, and reply-target message come from a `ReminderContext` built server-side from the webhook that triggered the response (`handler → send_ai_response(trigger=webhook) → generate_response(reminder_context=...)`). The tool is only offered when a context is present, and reminders are always attributed to the person whose message triggered the response — the same semantics as `/remindme`. Both paths share the creation core (timestamp resolution → future validation → persistence) in `utils/reminders.py`.
+Prompts live in `ai/context.py`. History windows and the classification threshold live in `ai/chat.py`. Timestamp resolution selects `POWERFUL`.
 
-**Message-history role convention:** GroupMe is n-party chat, but Anthropic's API expects `user`/`assistant` turns. `AnthropicClient.build_message_entry` maps human messages to `role: "user"` and MeeshBot's own messages to `role: "assistant"`, both prefixed with `"Sender Name (timestamp): text"`. This preserves speaker attribution while maintaining the self-vs-other separation the model reasons about.
+**Tools and continuation:** Client-side tool definitions and executors live in `ai/tools/`. `AIClient` binds them into `AITool` objects, including trusted context in executor closures. Providers dispatch only through the supplied tool list. Unknown/unavailable tools, malformed inputs, and executor failures produce error results for the model. Database queries are unavailable in public groups; `AI_DATABASE_URL` must use a read-only Postgres role. Tool loops have no application iteration cap.
 
-**Classifier vs participant framing:** The two prompts consume history differently:
+Anthropic replays complete assistant content and appends tool results, including continuation after server-tool `pause_turn`. Its native web search/fetch tools use direct invocation for Haiku. OpenAI uses the Responses API with `store=False`, replays all native output items including encrypted reasoning, and matches function results by `call_id`. Its native web search can open pages; citation URLs are rendered inline in GroupMe text. Neither provider relies on a stored remote conversation.
 
-- `send_ai_response` passes history as role-tagged messages — the LLM is *participating in* the conversation
-- `should_respond` flattens history into a single user-role text block — the LLM is *analyzing* the conversation from outside, classifying evidence
+**Tool identity and trust:** `create_reminder` takes only a natural-language time and message from the model. Group, sender, and reply-target IDs come from a `ReminderContext` built from the triggering webhook (`handler → send_ai_response(trigger=webhook) → generate_response(reminder_context=...)`). The tool is unavailable without that context. Both AI and slash-command reminders share timestamp resolution, future validation, and persistence in `utils/reminders.py`. Resolving an AI-created reminder invokes a separate `POWERFUL` AI call through that shared core.
 
-When adding new LLM features, decide which framing fits and pass history accordingly.
+**History framing:** `AIClient.build_message_history_entry` emits provider-neutral `AIMessage` values. Human messages have the `user` role, and messages named `MeeshBot` have the `assistant` role. Both carry a `"Sender Name (timestamp): text"` prefix. The responder receives these role-tagged messages as a participant. The classifier receives a single user text block as evidence, with the final message explicitly marked. Preserve this distinction when adding AI features.
 
-**Structured outputs:** For LLM calls needing strict-shape output, use `AsyncAnthropic.messages.parse` with a Pydantic model as `output_format`. Two examples exist on `AnthropicClient`: `resolve_timestamp` → `_ResolvedTimestamp`, `score_response_likelihood` → `ResponseLikelihood` (public because callers receive the parsed model; keep output models private when the method returns an extracted value). Read the result via `response.parsed_output`. Raise on `None`; don't silently fall through. Field declaration order is generation order — put a `reason`/justification field before the answer field when reasoning-first improves output quality.
+**Structured outputs and budgets:** `AIClient` supplies Pydantic models to `provider.generate_structured`, implemented with Anthropic `messages.parse` or OpenAI `responses.parse`. Missing or incomplete parsed output raises; it never silently becomes a result. Keep output models private when callers receive an extracted value. Put justification fields before answer fields when reasoning-first generation helps. Non-frontier structured calls disable thinking/reasoning to keep small output budgets usable. Frontier calls use low effort and an 8,192-token budget floor because reasoning shares the output limit; this is an allowance, not a completion guarantee. OpenAI rejects incomplete text responses. Anthropic text generation returns the latest nonempty text on a terminal stop, including truncation. There is no application retry with a larger budget.
 
 ### Scheduler
 
@@ -59,7 +58,7 @@ All application code lives in `meeshbot/`.
 - **`handlers/`** — webhook handler that orchestrates persist → command → AI response
 - **`commands/`** — one module per slash command. Each exports an async function taking `GroupMeWebhookPayload`. Registered in `commands/registry.py`, re-exported from `commands/__init__.py`.
 - **`integrations/groupme/`** — `client.py` (GroupMe API client, posts via bot IDs), `types.py` (Pydantic models for webhook payloads, messages, groups), `queries.py` (DB operations for messages/users/groups), `secrets.py` (bot ID mappings, admin user IDs, public group IDs)
-- **`integrations/anthropic/`** — `client.py` (AnthropicClient wrapper, structured outputs, agentic tool-use loop), `chat.py` (two-prompt pipeline orchestration, history building), `context.py` (system prompt and tool description constants), `tools/` (tool definitions and executors — `claude.py` for server-side web tools, `db.py` for `query_database`, `reminders.py` for `create_reminder` and `ReminderContext`; re-exported from `tools/__init__.py`)
+- **`integrations/ai/`:** application-facing client and pipeline, provider protocol and neutral types, shared tools, and concrete SDK adapters under `providers/`
 - **`models/`** — Oxyde ORM models: `GroupMeGroup`, `GroupMeUser`, `GroupMeMessage`, `Reminder`, `Flag`. Each has a corresponding `.pyi` stub auto-generated by Oxyde.
 - **`scheduled/`** — `scheduler.py` (APScheduler config, job registration), `reminders.py` (queries for due reminders, dispatches them to GroupMe), `message_sync.py` (nightly backfill of recent messages from GroupMe API)
 - **`utils/`** — `logging.py` (structlog configuration), `dates.py` (timezone-aware datetime helpers), `flags.py` (persistent boolean flags with optional expiry, backed by the `Flag` model; add new keys to `FlagKey`), `reminders.py` (reminder creation core shared by the `/remindme` command and the `create_reminder` tool)
@@ -93,10 +92,11 @@ Two decorators are available in `registry.py`: `admin_only` (gates on `ADMIN_USE
 
 ### Adding LLM features
 
-- New system prompts → string constants in `integrations/anthropic/context.py`
-- New structured-output calls → method on `AnthropicClient` with a private `_ModelName(BaseModel)` in `client.py`
-- New orchestration (history fetching, prompt assembly, output dispatch) → `chat.py`
-- New client-side tools → add a tool definition dict and an `async execute_<name>` function in the appropriate `tools/` submodule (`claude.py` for server-side web tools, `db.py` for database tools, `reminders.py` for reminder tools, or a new module for a new category), with the tool description as a constant in `context.py`. Re-export from `tools/__init__.py`, then add the tool to the `tools` list in `AnthropicClient.generate_response`. The agentic loop in `generate_response` dispatches by `block.name`, so add a new `elif block.name == "your_tool"` branch there. If the tool needs identity or message context, follow the `ReminderContext` pattern — build it server-side and pass it through `generate_response`; never accept IDs as LLM tool input.
+- New system prompts belong in `integrations/ai/context.py`.
+- New structured-output features belong on `AIClient`, with a Pydantic output model and a call to `provider.generate_structured`. Keep SDK types inside concrete providers.
+- History fetching, prompt assembly, and output dispatch belong in `ai/chat.py`.
+- New client-side tools need a `ToolDefinition` and async executor in `ai/tools/`, then an `AITool` binding in `AIClient.generate_response`. The shared schema supports required string parameters. Bind identity server-side, following `ReminderContext`; never take trusted IDs from model arguments. Both providers dispatch generically, so adding a client-side tool does not require editing their loops.
+- New providers implement `AIProvider`, map every `AIModel` tier, and are wired into `AIClient` selection. Native web tools and their limits stay provider-specific.
 
 ### Adding a scheduled job
 
@@ -135,6 +135,8 @@ uv run ruff check meeshbot     # lint
 uv run ruff format meeshbot    # format
 uv run mypy meeshbot           # type check
 ```
+
+AI tests run with `uv run pytest tests`. They use `asyncio.run` and real SDKs backed by mocked HTTP transports, with no API credentials, database, or GroupMe calls required. Run `uv run ruff check meeshbot tests` to lint both application and test code.
 
 Ruff and mypy both exclude `meeshbot/migrations/`. Ruff also excludes model `.pyi` stubs; mypy ignores errors in `meeshbot.models.*` via a pyproject override because the auto-generated stubs don't type-check cleanly (model usage is still checked at call sites). Strict mypy — all functions must be fully typed.
 
