@@ -7,6 +7,7 @@ import pytest
 from meeshbot.config import TIMEZONE
 from meeshbot.integrations.ai import chat, client
 from meeshbot.integrations.ai.client import AIClient, ResponseLikelihood
+from meeshbot.integrations.ai.context import IMAGE_ANALYSIS_CONTEXT
 from meeshbot.integrations.ai.provider import AIProvider, execute_tool
 from meeshbot.integrations.ai.providers.anthropic import AnthropicProvider
 from meeshbot.integrations.ai.providers.openai import OpenAIProvider
@@ -215,3 +216,79 @@ def test_reminder_creation_is_unavailable_without_trigger_context(
     asyncio.run(AIClient().generate_response([], allow_webfetch=False, allow_db_query=False))
     reminder.assert_not_awaited()
     assert requests[0]["tools"] == []
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "openai"])
+def test_image_description_sends_native_image_input_to_selected_provider(
+    monkeypatch: pytest.MonkeyPatch, provider: str
+) -> None:
+    requests: list[dict[str, object]] = []
+    adapter = install_api(
+        monkeypatch,
+        provider,
+        [response_payload(provider, [text_output(provider, '{"description":" A dog. "}')])],
+        requests,
+        model=AIModel.CHEAP,
+    )
+    monkeypatch.setattr(client, "AI_PROVIDER", provider)
+    monkeypatch.setattr(client, "AnthropicProvider", lambda *_args, **_kwargs: adapter)
+    monkeypatch.setattr(client, "OpenAIProvider", lambda *_args, **_kwargs: adapter)
+    url = "https://i.groupme.com/example.png"
+    assert asyncio.run(AIClient(AIModel.CHEAP).describe_image(url)) == "A dog."
+    request = requests[0]
+    assert not request.get("tools")
+    if provider == "anthropic":
+        assert request["model"] == "claude-haiku-4-5"
+        assert request["system"] == IMAGE_ANALYSIS_CONTEXT
+        assert request["messages"][0]["content"][0] == {
+            "type": "image",
+            "source": {"type": "url", "url": url},
+        }
+    else:
+        assert request["model"] == "gpt-5.6-luna"
+        assert request["instructions"] == IMAGE_ANALYSIS_CONTEXT
+        assert request["input"][0]["content"][0] == {
+            "type": "input_image",
+            "image_url": url,
+            "detail": "auto",
+        }
+        assert request["store"] is False
+
+
+@pytest.mark.parametrize("provider", ["anthropic", "openai"])
+def test_empty_image_description_is_not_a_success(
+    monkeypatch: pytest.MonkeyPatch, provider: str
+) -> None:
+    adapter = install_api(
+        monkeypatch,
+        provider,
+        [response_payload(provider, [text_output(provider, '{"description":" "}')])],
+        [],
+        model=AIModel.CHEAP,
+    )
+    monkeypatch.setattr(client, "AI_PROVIDER", provider)
+    monkeypatch.setattr(client, "AnthropicProvider", lambda *_args, **_kwargs: adapter)
+    monkeypatch.setattr(client, "OpenAIProvider", lambda *_args, **_kwargs: adapter)
+    with pytest.raises(ValueError):
+        asyncio.run(AIClient(AIModel.CHEAP).describe_image("https://i.groupme.com/example.png"))
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "file:///etc/passwd",
+        "http://example.com/image",
+        "https:///missing",
+        "https://user:password@example.com/image",
+    ],
+)
+def test_invalid_image_urls_are_not_sent_to_provider(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    monkeypatch.setattr(client, "AI_PROVIDER", "anthropic")
+    monkeypatch.setattr(client, "ANTHROPIC_API_KEY", "test")
+    generate = AsyncMock()
+    monkeypatch.setattr(AnthropicProvider, "generate_structured", generate)
+    with pytest.raises(ValueError):
+        asyncio.run(AIClient().describe_image(url))
+    generate.assert_not_awaited()

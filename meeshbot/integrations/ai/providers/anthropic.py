@@ -126,7 +126,14 @@ class AnthropicProvider:
         context: str,
         output_format: type[T],
         max_tokens: int,
+        image_url: str | None = None,
     ) -> T:
+        message: MessageParam = {"role": "user", "content": prompt}
+        if image_url is not None:
+            message["content"] = [
+                {"type": "image", "source": {"type": "url", "url": image_url}},
+                {"type": "text", "text": prompt},
+            ]
         thinking: ThinkingConfigParam = (
             {"type": "adaptive"} if self.tier == AIModel.FRONTIER else {"type": "disabled"}
         )
@@ -135,7 +142,7 @@ class AnthropicProvider:
                 model=self.model,
                 max_tokens=self._max_tokens(max_tokens),
                 system=context,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[message],
                 output_format=output_format,
                 thinking=thinking,
                 output_config={"effort": "low"} if self.tier == AIModel.FRONTIER else omit,

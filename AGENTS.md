@@ -16,20 +16,24 @@ This chain lives in `meeshbot/handlers/groupme.py`. Each step is independent —
 
 GroupMe is the source of truth for messages. The webhook delivers them; meeshbot persists a local copy to Postgres for history queries (LLM context windows, scoreboards). The bot posts replies back to GroupMe via bot IDs — each GroupMe group has a dedicated bot ID mapped in `meeshbot/integrations/groupme/secrets.py`.
 
+**Image history:** Image attachments carry app-owned `metadata` in the message's JSONB array: `status` (`in_progress`, `complete`, `failed`), `updated` (UTC ISO 8601), and a description on completion. Webhook, nightly, and manual sync dispatch background analysis after persistence. Complete images are skipped; missing/failed analysis and `in_progress` metadata at least five minutes old are eligible. Missing or invalid `updated` timestamps are retryable. Retry eligibility uses metadata time, not message age, and is checked only when the message is synced.
+
+`integrations/groupme/image_analysis.py` runs in-process tasks with bounded concurrency and an API-call timeout. Tasks use `AIModel.CHEAP` with the configured provider's image-URL input, do not delay replies, and do not trigger replies on completion. Task references are retained only for lifetime management; persisted metadata determines eligibility. Sync preserves image metadata by URL, and conditional JSONB updates protect concurrent attachment writes. Results apply only to the analysis attempt that started them. No image bytes are downloaded by Meeshbot. Attachment-only messages do not trigger AI response evaluation.
+
 ### AI providers and two-prompt pipeline
 
 `meeshbot/integrations/ai/client.py` exposes `AIClient` to application code. It constructs the provider selected by `AI_PROVIDER` (`anthropic` by default, or `openai`). Only the selected provider's API key is required. Unknown provider values fail explicitly. All AI operations, including reminder and `/timeout` timestamp parsing, use this selection.
 
-`AIProvider` in `ai/provider.py` is a protocol for text generation with tools and typed structured generation. `providers/anthropic.py` and `providers/openai.py` own SDK types, native web tools, and continuation state. Each operation opens and closes its SDK client; an `AIClient` can be reused. Application prompts, output models, history formatting, and tool availability belong to `AIClient`, not the providers.
+`AIProvider` in `ai/provider.py` is a protocol for text generation with tools and typed structured generation with an optional image URL. `providers/anthropic.py` and `providers/openai.py` own SDK types, native web tools, image content blocks, and continuation state. Each operation opens and closes its SDK client; an `AIClient` can be reused. Application prompts, output models, history formatting, and tool availability belong to `AIClient`, not the providers.
 
-Callers select capability tiers from `AIModel` in `ai/types.py`: `CHEAP` (Haiku/Luna), `BASIC` (Sonnet/Terra), `POWERFUL` (Opus/Sol), and `FRONTIER` (Fable/Astra). Concrete API model IDs live in each provider's `MODELS` mapping. `BASIC` is the client default. Tiers describe model capabilities, not application jobs.
+Callers select capability tiers from `AIModel` in `ai/types.py`: `CHEAP` (Haiku/Luna), `BASIC` (Sonnet/Terra), `POWERFUL` (Opus/Sol), and `FRONTIER` (Fable/Astra). Concrete API model IDs live in each provider's `MODELS` mapping. `POWERFUL` is the client default. Tiers describe model capabilities, not application jobs.
 
 The two-prompt pipeline in `ai/chat.py` keeps the more expensive responder off the ordinary message path:
 
-1. **Classifier (`should_respond`):** selects `CHEAP`, scores response likelihood, and checks the configured threshold.
-2. **Responder (`send_ai_response`):** selects the default `BASIC` tier and generates a reply with web access and eligible client-side tools.
+1. **Classifier (`should_respond`):** selects `BASIC`, scores response likelihood, and checks the configured threshold.
+2. **Responder (`send_ai_response`):** selects the default `POWERFUL` tier and generates a reply with web access and eligible client-side tools.
 
-Prompts live in `ai/context.py`. History windows and the classification threshold live in `ai/chat.py`. Timestamp resolution selects `POWERFUL`.
+Prompts live in `ai/context/`, one prompt per module, re-exported through the package. History windows and the classification threshold live in `ai/chat.py`. Timestamp resolution selects `POWERFUL`.
 
 **Tools and continuation:** Client-side tool definitions and executors live in `ai/tools/`. `AIClient` binds them into `AITool` objects, including trusted context in executor closures. Providers dispatch only through the supplied tool list. Unknown/unavailable tools, malformed inputs, and executor failures produce error results for the model. Database queries are unavailable in public groups; `AI_DATABASE_URL` must use a read-only Postgres role. Tool loops have no application iteration cap.
 
@@ -38,6 +42,8 @@ Anthropic replays complete assistant content and appends tool results, including
 **Tool identity and trust:** `create_reminder` takes only a natural-language time and message from the model. Group, sender, and reply-target IDs come from a `ReminderContext` built from the triggering webhook (`handler → send_ai_response(trigger=webhook) → generate_response(reminder_context=...)`). The tool is unavailable without that context. Both AI and slash-command reminders share timestamp resolution, future validation, and persistence in `utils/reminders.py`. Resolving an AI-created reminder invokes a separate `POWERFUL` AI call through that shared core.
 
 **History framing:** `AIClient.build_message_history_entry` emits provider-neutral `AIMessage` values. Human messages have the `user` role, and messages named `MeeshBot` have the `assistant` role. Both carry a `"Sender Name (timestamp): text"` prefix. The responder receives these role-tagged messages as a participant. The classifier receives a single user text block as evidence, with the final message explicitly marked. Preserve this distinction when adding AI features.
+
+Image descriptions follow the message text as `[Image: description]`; missing, in-progress, and failed analysis have explicit placeholders. Unsupported content attachments render an inability-to-analyze placeholder; mentions and reply references are omitted. Both classifier and responder use this shared rendering. Image descriptions are untrusted attachment content, not instructions.
 
 **Structured outputs and budgets:** `AIClient` supplies Pydantic models to `provider.generate_structured`, implemented with Anthropic `messages.parse` or OpenAI `responses.parse`. Missing or incomplete parsed output raises; it never silently becomes a result. Keep output models private when callers receive an extracted value. Put justification fields before answer fields when reasoning-first generation helps. Non-frontier structured calls disable thinking/reasoning to keep small output budgets usable. Frontier calls use low effort and an 8,192-token budget floor because reasoning shares the output limit; this is an allowance, not a completion guarantee. OpenAI rejects incomplete text responses. Anthropic text generation returns the latest nonempty text on a terminal stop, including truncation. There is no application retry with a larger budget.
 
@@ -92,7 +98,7 @@ Two decorators are available in `registry.py`: `admin_only` (gates on `ADMIN_USE
 
 ### Adding LLM features
 
-- New system prompts belong in `integrations/ai/context.py`.
+- New system prompts belong in their own modules in `integrations/ai/context/`.
 - New structured-output features belong on `AIClient`, with a Pydantic output model and a call to `provider.generate_structured`. Keep SDK types inside concrete providers.
 - History fetching, prompt assembly, and output dispatch belong in `ai/chat.py`.
 - New client-side tools need a `ToolDefinition` and async executor in `ai/tools/`, then an `AITool` binding in `AIClient.generate_response`. The shared schema supports required string parameters. Bind identity server-side, following `ReminderContext`; never take trusted IDs from model arguments. Both providers dispatch generically, so adding a client-side tool does not require editing their loops.

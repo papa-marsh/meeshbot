@@ -22,11 +22,13 @@ Built with Python 3.14, FastAPI, Postgres, APScheduler, and uv.
 
 **Message persistence:** all messages are synced to Postgres on receipt, providing history for AI context windows and scoreboard queries. A nightly job backfills the last 7 days from the GroupMe API.
 
+**Image understanding:** images are described in the background and saved alongside their attachment URLs. Descriptions appear in AI conversation history, with explicit placeholders while analysis is pending or if it fails. Other content attachments are labeled but not analyzed. Live, nightly, and manual sync share the same rules: completed descriptions are preserved, failed analysis is retried, and in-progress analysis can be retried after five minutes. Replies do not wait for image analysis, and completing it does not trigger a reply.
+
 ## AI configuration
 
-Set `AI_PROVIDER=anthropic` (the default) with `ANTHROPIC_API_KEY`, or `AI_PROVIDER=openai` with `OPENAI_API_KEY` in `.env`. Only the selected provider's key is required. This selection covers replies, classification, and natural-language time parsing. See `.env.example` for the other service settings.
+Set `AI_PROVIDER=anthropic` (the default) with `ANTHROPIC_API_KEY`, or `AI_PROVIDER=openai` with `OPENAI_API_KEY` in `.env`. Only the selected provider's key is required. This selection covers replies, classification, image descriptions, and natural-language time parsing. Image URLs are sent to that provider for analysis. See `.env.example` for the other service settings.
 
-Application code chooses `AIModel.CHEAP`, `BASIC`, `POWERFUL`, or `FRONTIER`. Providers map these to Haiku/Luna, Sonnet/Terra, Opus/Sol, and Fable/Astra respectively. Classification uses `CHEAP`, replies default to `BASIC`, and time parsing uses `POWERFUL`. API model IDs live in `meeshbot/integrations/ai/providers/`.
+Application code chooses `AIModel.CHEAP`, `BASIC`, `POWERFUL`, or `FRONTIER`. Providers map these to Haiku/Luna, Sonnet/Terra, Opus/Sol, and Fable/Astra respectively. Image descriptions use `CHEAP`, classification uses `BASIC`, replies default to `POWERFUL`, and time parsing uses `POWERFUL`. API model IDs live in `meeshbot/integrations/ai/providers/`.
 
 Anthropic provides native web search and fetch; OpenAI uses native web search with page-opening support and inline citation URLs. Frontier models require reasoning and use a larger output budget allowance.
 

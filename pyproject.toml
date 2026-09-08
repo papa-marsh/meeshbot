@@ -69,7 +69,7 @@ ignore = [
     "E501",   # Line length
     "S101",   # Assert statements
 ]
-"meeshbot/integrations/ai/context.py" = [
+"meeshbot/integrations/ai/context/*.py" = [
     "E501", # Line length
 ]
 

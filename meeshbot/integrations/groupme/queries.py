@@ -5,6 +5,8 @@ from typing import Any, TypedDict
 
 from oxyde.queries.aggregates import Count
 
+from meeshbot.integrations.groupme.attachments import merge_attachments, serialize_attachments
+from meeshbot.integrations.groupme.image_analysis import dispatch_image_analysis
 from meeshbot.integrations.groupme.secrets import ADMIN_USER_IDS, BOTS_BY_GROUP, PUBLIC_GROUPS
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload, Message
 from meeshbot.models import GroupMeGroup, GroupMeMessage, GroupMeUser
@@ -55,10 +57,12 @@ async def sync_message_to_db(message: GroupMeWebhookPayload) -> None:
             "sender_id": message.user_id,
             "text": message.text,
             "system": message.system,
-            "attachments": [a.model_dump() for a in message.attachments],
+            "attachments": serialize_attachments(message.attachments),
             "timestamp": created_at,
         },
     )
+
+    await dispatch_image_analysis(message.id)
 
 
 async def upsert_user(user_id: str, name: str, image_url: str | None) -> None:
@@ -76,25 +80,34 @@ async def upsert_user(user_id: str, name: str, image_url: str | None) -> None:
 async def upsert_message(group_id: str, message: Message) -> None:
     """Create or update a GroupMeMessage from a GroupMe API Message object."""
     timestamp = datetime.fromtimestamp(message.created_at, tz=UTC)
-    attachments = [a.model_dump() for a in message.attachments]
+    attachments = serialize_attachments(message.attachments)
 
-    existing = await GroupMeMessage.objects.get_or_none(id=message.id)
-    if existing is not None:
-        existing.text = message.text
-        existing.system = message.system
-        existing.attachments = attachments
-        existing.timestamp = timestamp
-        await existing.save()
-    else:
-        await GroupMeMessage.objects.create(
+    while True:
+        existing, created = await GroupMeMessage.objects.get_or_create(
             id=message.id,
-            group_id=group_id,
-            sender_id=message.user_id,
+            defaults={
+                "group_id": group_id,
+                "sender_id": message.user_id,
+                "text": message.text,
+                "system": message.system,
+                "attachments": attachments,
+                "timestamp": timestamp,
+            },
+        )
+        if created:
+            break
+        updated = await GroupMeMessage.objects.filter(
+            id=message.id, attachments=existing.attachments
+        ).update(
             text=message.text,
             system=message.system,
-            attachments=attachments,
+            attachments=merge_attachments(attachments, existing.attachments),
             timestamp=timestamp,
         )
+        if updated:
+            break
+
+    await dispatch_image_analysis(message.id)
 
 
 async def get_message_history(

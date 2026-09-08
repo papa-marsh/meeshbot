@@ -137,12 +137,24 @@ class OpenAIProvider:
         context: str,
         output_format: type[T],
         max_tokens: int,
+        image_url: str | None = None,
     ) -> T:
+        inputs: ResponseInputParam = [{"role": "user", "content": prompt}]
+        if image_url is not None:
+            inputs = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_image", "image_url": image_url, "detail": "auto"},
+                        {"type": "input_text", "text": prompt},
+                    ],
+                }
+            ]
         async with AsyncOpenAI(api_key=self.api_key) as client:
             response = await client.responses.parse(
                 model=self.model,
                 instructions=context,
-                input=[{"role": "user", "content": prompt}],
+                input=inputs,
                 text_format=output_format,
                 max_output_tokens=self._max_tokens(max_tokens),
                 reasoning=self._reasoning(),

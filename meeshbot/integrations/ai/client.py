@@ -1,9 +1,11 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
 from meeshbot.config import AI_PROVIDER, ANTHROPIC_API_KEY, OPENAI_API_KEY, TIMEZONE
+from meeshbot.integrations.ai.context import IMAGE_ANALYSIS_CONTEXT, resolve_timestamp_context
 from meeshbot.integrations.ai.provider import AIProvider
 from meeshbot.integrations.ai.providers.anthropic import AnthropicProvider
 from meeshbot.integrations.ai.providers.openai import OpenAIProvider
@@ -15,6 +17,7 @@ from meeshbot.integrations.ai.tools import (
     execute_db_query,
 )
 from meeshbot.integrations.ai.types import AIMessage, AIModel, AITool
+from meeshbot.integrations.groupme.attachments import render_attachments
 
 DEFAULT_MAX_TOKENS = 2048
 ERROR_OUTPUT = "FAILED"
@@ -22,6 +25,10 @@ ERROR_OUTPUT = "FAILED"
 
 class _ResolvedTimestamp(BaseModel):
     iso: str
+
+
+class _ImageDescription(BaseModel):
+    description: str
 
 
 class ResponseLikelihood(BaseModel):
@@ -46,11 +53,14 @@ class AIClient:
         sender_name: str,
         timestamp: datetime,
         message: str,
+        attachments: Sequence[Mapping[str, object]] = (),
     ) -> AIMessage:
         timestamp_string = timestamp.astimezone(TIMEZONE).strftime("%b %-d %Y, %-I:%M%p")
+        rendered = render_attachments(attachments)
+        body = "\n".join(part for part in (message, rendered) if part)
         return AIMessage(
             role="assistant" if sender_name == "MeeshBot" else "user",
-            content=f"{sender_name} ({timestamp_string}): {message}",
+            content=f"{sender_name} ({timestamp_string}): {body}",
         )
 
     async def generate_response(
@@ -88,20 +98,27 @@ class AIClient:
 
     async def resolve_timestamp(self, description: str) -> str:
         now_str = datetime.now(tz=TIMEZONE).strftime("%A, %B %d, %Y %I:%M %p %Z")
-        system = (
-            f"You are a precise datetime parser. The current date and time is {now_str}. "
-            "When given a natural-language date or time description, resolve it to a specific "
-            "datetime. Return it in the iso field as an ISO 8601 string "
-            "(YYYY-MM-DDTHH:MM:SS) with no timezone suffix. "
-            "For vague times of day, use a reasonable default "
-            "(morning=09:00, afternoon=14:00, evening=18:00, night=21:00). "
-            "For dates with no time specified, use 10:00. "
-            f"If the input cannot be resolved to a timestamp, set iso to {ERROR_OUTPUT!r}."
-        )
+        system = resolve_timestamp_context(now_str, ERROR_OUTPUT)
         result = await self.provider.generate_structured(
             description, context=system, output_format=_ResolvedTimestamp, max_tokens=64
         )
         return result.iso
+
+    async def describe_image(self, url: str) -> str:
+        parsed = urlsplit(url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError("Image analysis requires an HTTPS image URL without credentials")
+        result = await self.provider.generate_structured(
+            "Describe the attached image for the chat history.",
+            context=IMAGE_ANALYSIS_CONTEXT,
+            output_format=_ImageDescription,
+            max_tokens=1024,
+            image_url=url,
+        )
+        description = result.description.strip()
+        if not description:
+            raise ValueError("Image analysis returned an empty description")
+        return description
 
     async def score_response_likelihood(
         self, history_text: str, context: str

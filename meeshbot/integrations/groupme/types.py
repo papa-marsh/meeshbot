@@ -1,3 +1,5 @@
+from datetime import datetime
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -15,10 +17,23 @@ class MentionsAttachment(BaseModel):
     loci: list[tuple[int, int]]
 
 
+class ImageAnalysisStatus(StrEnum):
+    IN_PROGRESS = "in_progress"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+class ImageMetadata(BaseModel):
+    status: ImageAnalysisStatus
+    updated: datetime
+    description: str | None = None
+
+
 class ImageAttachment(BaseModel):
     type: Literal["image"]
     url: str
     blur_hash: str | None = None
+    metadata: ImageMetadata | None = None
 
 
 class VideoAttachment(BaseModel):

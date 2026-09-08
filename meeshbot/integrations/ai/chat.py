@@ -41,6 +41,7 @@ async def build_message_history(
             sender_name=sender_name_map[user_id],
             timestamp=message.timestamp,
             message=message.text or "",
+            attachments=message.attachments,
         )
         context_messages.append(message_entry)
 

@@ -24,6 +24,7 @@ class AIProvider(Protocol):
         context: str,
         output_format: type[T],
         max_tokens: int,
+        image_url: str | None = None,
     ) -> T: ...
 
 
