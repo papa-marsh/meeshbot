@@ -1,6 +1,7 @@
 services:
   meeshbot:
     container_name: meeshbot
+    restart: unless-stopped
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -15,6 +16,7 @@ services:
 
   postgres:
     container_name: meeshbot-postgres
+    restart: unless-stopped
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: meeshbot

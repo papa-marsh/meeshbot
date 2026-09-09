@@ -123,7 +123,7 @@ uv run <command>            # run in venv
 
 ### Running / deploying
 
-Runs in Docker Compose (FastAPI + Postgres). The `meeshbot/` directory is volume-mounted, so code changes hot-reload without a rebuild.
+Runs in Docker Compose (FastAPI + Postgres). Both services use `restart: unless-stopped` to recover after process exits and Docker daemon restarts; explicitly stopped containers stay stopped. The `meeshbot/` directory is volume-mounted; restart the application container to load code edits. Uvicorn runs without a reloader so application startup failures exit the container and allow Docker to retry.
 
 ```bash
 just deploy                 # docker down → build → up → migrate → tail logs
