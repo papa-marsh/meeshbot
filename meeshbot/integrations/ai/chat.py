@@ -4,20 +4,19 @@ from meeshbot.integrations.ai.context import (
     SEND_AI_RESPONSE_CONTEXT,
     SHOULD_RESPOND_CONTEXT,
 )
-from meeshbot.integrations.ai.tools import ReminderContext
-from meeshbot.integrations.ai.types import AIMessage, AIModel
+from meeshbot.integrations.ai.types import AIMessage, AIModel, Context
 from meeshbot.integrations.groupme.client import GroupMeClient
 from meeshbot.integrations.groupme.queries import get_message_history, is_public_group
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from meeshbot.models.user import GroupMeUser
 from meeshbot.utils.logging import log
+from meeshbot.utils.volume import get_response_threshold, get_volume
 
 CHAT_HISTORY_MAX_DAYS = 14
 CHAT_HISTORY_MAX_COUNT = 100
 
 SHOULD_RESPOND_HISTORY_MAX_DAYS = 7
 SHOULD_RESPOND_HISTORY_MAX_COUNT = 20
-SHOULD_RESPOND_THRESHOLD = 50
 
 
 async def build_message_history(
@@ -48,13 +47,14 @@ async def build_message_history(
     return context_messages
 
 
-async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOLD) -> bool:
+async def should_respond(group_id: str) -> bool:
     """
     Decide whether MeeshBot should respond to the most recent message.
 
     Builds a recent-history block, asks the classifier model for a 0-100
     likelihood score, and returns True if the score meets the threshold.
     """
+    threshold = await get_response_threshold(group_id)
     message_history = await build_message_history(
         group_id=group_id,
         max_days=SHOULD_RESPOND_HISTORY_MAX_DAYS,
@@ -78,6 +78,7 @@ async def should_respond(group_id: str, threshold: int = SHOULD_RESPOND_THRESHOL
     log.info(
         "LLM response confidence determined",
         confidence=likelihood.score,
+        threshold=threshold,
         reason=likelihood.reason,
         message=most_recent_message,
     )
@@ -89,36 +90,33 @@ async def send_ai_response(
     group_id: str = TESTING_GROUP_ID,
     trigger: GroupMeWebhookPayload | None = None,
 ) -> None:
-    context = SEND_AI_RESPONSE_CONTEXT
     messages = await build_message_history(group_id)
+    volume = await get_volume(group_id)
 
     messages.append(
         AIMessage(
             role="user",
             content=(
                 "<-- Internal AI Note - not visible to user -->\n"
-                f"<-- The current group ID is: {group_id} -->"
+                f"<-- The current group ID is: {group_id} -->\n"
+                f"<-- The current volume is: {volume:g}/10 -->"
             ),
         )
     )
 
-    reminder_context = (
-        ReminderContext(
-            group_id=group_id,
-            sender_id=trigger.user_id,
-            trigger_message_id=trigger.id,
-        )
-        if trigger is not None
-        else None
+    context = Context(
+        group_id=group_id,
+        sender_id=trigger.user_id if trigger is not None else None,
+        trigger_message_id=trigger.id if trigger is not None else None,
     )
 
     allow_db_query = not is_public_group(group_id)
     response = await AIClient().generate_response(
         messages=messages,
         context=context,
+        system_prompt=SEND_AI_RESPONSE_CONTEXT,
         allow_webfetch=True,
         allow_db_query=allow_db_query,
-        reminder_context=reminder_context,
     )
 
     if not response:

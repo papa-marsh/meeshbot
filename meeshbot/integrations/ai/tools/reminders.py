@@ -1,8 +1,6 @@
-from dataclasses import dataclass
-
 from meeshbot.integrations.ai.context import CREATE_REMINDER_TOOL_DESCRIPTION
 from meeshbot.integrations.ai.tools.db import ERROR_PREFIX
-from meeshbot.integrations.ai.types import ToolDefinition
+from meeshbot.integrations.ai.types import Context, ToolDefinition
 from meeshbot.utils.dates import verbose_datetime
 from meeshbot.utils.logging import log
 from meeshbot.utils.reminders import PastTimeError, UnresolvableTimeError, create_reminder
@@ -31,17 +29,8 @@ CREATE_REMINDER_TOOL: ToolDefinition = {
 }
 
 
-@dataclass(frozen=True)
-class ReminderContext:
-    """Identifies the message that triggered the AI response, for reminder attribution."""
-
-    group_id: str
-    sender_id: str
-    trigger_message_id: str
-
-
 async def execute_create_reminder(
-    context: ReminderContext,
+    context: Context,
     time_description: str,
     message: str,
 ) -> str:
@@ -51,6 +40,9 @@ async def execute_create_reminder(
     Returns a confirmation string with the resolved delivery time, or an
     error-prefixed string when the time description can't be resolved.
     """
+    if context.sender_id is None or context.trigger_message_id is None:
+        raise ValueError("Reminder creation requires sender and triggering message IDs")
+
     log.info(
         "AI creating reminder",
         group_id=context.group_id,

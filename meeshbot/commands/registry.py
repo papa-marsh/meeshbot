@@ -11,6 +11,7 @@ from meeshbot.commands import (
     scoreboard_all,
     sync,
     timeout,
+    volume,
     what_is_jeff,
     what_is_sam,
 )
@@ -56,6 +57,7 @@ COMMAND_REGISTRY: dict[str, CommandFuncT] = {
     "/remindme": remindme,
     "/reminders": reminders,
     "/timeout": timeout,
+    "/volume": volume,
     "/roll": roll,
     "/scoreboard": scoreboard,
     "/scoreboard-all": no_public(scoreboard_all),

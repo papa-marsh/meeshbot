@@ -17,6 +17,7 @@ class GroupMeGroup(Model):
     name: str
     image_url: str | None
     created_at: datetime
+    response_threshold: float
     objects: "GroupMeGroupManager"
 
 
@@ -70,6 +71,15 @@ class GroupMeGroupQuery(Query[GroupMeGroup]):
         name__iexact: str | None = None,
         name__in: list[str] | None = None,
         name__isnull: bool | None = None,
+        response_threshold: float | None = None,
+        response_threshold__gt: float | None = None,
+        response_threshold__gte: float | None = None,
+        response_threshold__lt: float | None = None,
+        response_threshold__lte: float | None = None,
+        response_threshold__between: tuple[float, float] | None = None,
+        response_threshold__range: float | None = None,
+        response_threshold__in: list[float] | None = None,
+        response_threshold__isnull: bool | None = None,
     ) -> "GroupMeGroupQuery":
         """Filter by Q-expressions or field lookups."""
         ...
@@ -119,11 +129,20 @@ class GroupMeGroupQuery(Query[GroupMeGroup]):
         name__iexact: str | None = None,
         name__in: list[str] | None = None,
         name__isnull: bool | None = None,
+        response_threshold: float | None = None,
+        response_threshold__gt: float | None = None,
+        response_threshold__gte: float | None = None,
+        response_threshold__lt: float | None = None,
+        response_threshold__lte: float | None = None,
+        response_threshold__between: tuple[float, float] | None = None,
+        response_threshold__range: float | None = None,
+        response_threshold__in: list[float] | None = None,
+        response_threshold__isnull: bool | None = None,
     ) -> "GroupMeGroupQuery":
         """Exclude objects matching field lookups."""
         ...
 
-    def order_by(self, *fields: Literal["created_at", "-created_at", "id", "-id", "image_url", "-image_url", "name", "-name"]) -> "GroupMeGroupQuery":
+    def order_by(self, *fields: Literal["created_at", "-created_at", "id", "-id", "image_url", "-image_url", "name", "-name", "response_threshold", "-response_threshold"]) -> "GroupMeGroupQuery":
         """Order results by fields."""
         ...
 
@@ -139,7 +158,7 @@ class GroupMeGroupQuery(Query[GroupMeGroup]):
         """Return distinct results."""
         ...
 
-    def select(self, *fields: Literal["created_at", "id", "image_url", "name"]) -> "GroupMeGroupQuery":
+    def select(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"]) -> "GroupMeGroupQuery":
         """Select specific fields."""
         ...
 
@@ -163,7 +182,7 @@ class GroupMeGroupQuery(Query[GroupMeGroup]):
         """Add computed fields using aggregate functions."""
         ...
 
-    def group_by(self, *fields: Literal["created_at", "id", "image_url", "name"]) -> "GroupMeGroupQuery":
+    def group_by(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"]) -> "GroupMeGroupQuery":
         """Add GROUP BY clause."""
         ...
 
@@ -171,11 +190,11 @@ class GroupMeGroupQuery(Query[GroupMeGroup]):
         """Add HAVING clause for filtering grouped results."""
         ...
 
-    def values(self, *fields: Literal["created_at", "id", "image_url", "name"]) -> "GroupMeGroupQuery":
+    def values(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"]) -> "GroupMeGroupQuery":
         """Return dicts instead of models."""
         ...
 
-    def values_list(self, *fields: Literal["created_at", "id", "image_url", "name"], flat: bool = False) -> "GroupMeGroupQuery":
+    def values_list(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"], flat: bool = False) -> "GroupMeGroupQuery":
         """Return tuples/values instead of models."""
         ...
 
@@ -341,6 +360,15 @@ class GroupMeGroupManager(QueryManager[GroupMeGroup]):
         name__iexact: str | None = None,
         name__in: list[str] | None = None,
         name__isnull: bool | None = None,
+        response_threshold: float | None = None,
+        response_threshold__gt: float | None = None,
+        response_threshold__gte: float | None = None,
+        response_threshold__lt: float | None = None,
+        response_threshold__lte: float | None = None,
+        response_threshold__between: tuple[float, float] | None = None,
+        response_threshold__range: float | None = None,
+        response_threshold__in: list[float] | None = None,
+        response_threshold__isnull: bool | None = None,
     ) -> GroupMeGroupQuery:
         """Filter by Q-expressions or field lookups."""
         ...
@@ -390,15 +418,24 @@ class GroupMeGroupManager(QueryManager[GroupMeGroup]):
         name__iexact: str | None = None,
         name__in: list[str] | None = None,
         name__isnull: bool | None = None,
+        response_threshold: float | None = None,
+        response_threshold__gt: float | None = None,
+        response_threshold__gte: float | None = None,
+        response_threshold__lt: float | None = None,
+        response_threshold__lte: float | None = None,
+        response_threshold__between: tuple[float, float] | None = None,
+        response_threshold__range: float | None = None,
+        response_threshold__in: list[float] | None = None,
+        response_threshold__isnull: bool | None = None,
     ) -> GroupMeGroupQuery:
         """Exclude objects matching field lookups."""
         ...
 
-    def values(self, *fields: Literal["created_at", "id", "image_url", "name"]) -> GroupMeGroupQuery:
+    def values(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"]) -> GroupMeGroupQuery:
         """Return dicts instead of models."""
         ...
 
-    def values_list(self, *fields: Literal["created_at", "id", "image_url", "name"], flat: bool = False) -> GroupMeGroupQuery:
+    def values_list(self, *fields: Literal["created_at", "id", "image_url", "name", "response_threshold"], flat: bool = False) -> GroupMeGroupQuery:
         """Return tuples/values instead of models."""
         ...
 
@@ -542,6 +579,7 @@ class GroupMeGroupManager(QueryManager[GroupMeGroup]):
         id: str | None = None,
         image_url: str | None = None,
         name: str | None = None,
+        response_threshold: float | None = None,
     ) -> GroupMeGroup:
         """Create new object."""
         ...

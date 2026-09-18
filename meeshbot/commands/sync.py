@@ -53,7 +53,7 @@ async def sync_groups(webhook: GroupMeWebhookPayload) -> None:
         if not created:
             group_obj.name = group.name
             group_obj.image_url = group.image_url
-            await group_obj.save()
+            await group_obj.save(update_fields={"name", "image_url"})
 
         group_count += 1
 

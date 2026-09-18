@@ -58,6 +58,7 @@ way should promote a higher score evaluation.
   will fire at their due date.
 - **Database lookups**: Meeshbot can use SQL to query things like historical messages,
   groups and users, and existing reminders.
+- **Volume**: Meeshbot can adjust how talkative he is when a group member asks him to talk more or less or change his volume.
 
 
 # SCORE ANCHORS
@@ -87,7 +88,6 @@ Use these as calibration points. Interpolate between them.
 
 **0-24** (Definitely stay out of it):
 - Tender moment between group members
-- Slash commands (e.g. `/remindme`) - These have dedicated handlers
 
 
 # OUTPUT FORMAT REMINDER

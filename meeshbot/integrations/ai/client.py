@@ -12,11 +12,12 @@ from meeshbot.integrations.ai.providers.openai import OpenAIProvider
 from meeshbot.integrations.ai.tools import (
     CREATE_REMINDER_TOOL,
     DB_QUERY_TOOL,
-    ReminderContext,
+    SET_VOLUME_TOOL,
     execute_create_reminder,
     execute_db_query,
+    execute_set_volume,
 )
-from meeshbot.integrations.ai.types import AIMessage, AIModel, AITool
+from meeshbot.integrations.ai.types import AIMessage, AIModel, AITool, Context
 from meeshbot.integrations.groupme.attachments import render_attachments
 
 DEFAULT_MAX_TOKENS = 2048
@@ -66,11 +67,11 @@ class AIClient:
     async def generate_response(
         self,
         messages: Sequence[AIMessage],
-        context: str | None = None,
+        context: Context,
+        system_prompt: str | None = None,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         allow_webfetch: bool = True,
         allow_db_query: bool = True,
-        reminder_context: ReminderContext | None = None,
     ) -> str:
         tools: list[AITool] = []
         if allow_db_query:
@@ -79,18 +80,24 @@ class AIClient:
                 return await execute_db_query(arguments["sql"])
 
             tools.append(AITool(DB_QUERY_TOOL, query_database))
-        if reminder_context is not None:
+
+        if context.sender_id is not None and context.trigger_message_id is not None:
 
             async def create_reminder(arguments: dict[str, str]) -> str:
                 return await execute_create_reminder(
-                    reminder_context, arguments["time"], arguments["message"]
+                    context, arguments["time"], arguments["message"]
                 )
 
             tools.append(AITool(CREATE_REMINDER_TOOL, create_reminder))
 
+        async def set_volume(arguments: dict[str, str]) -> str:
+            return await execute_set_volume(context.group_id, arguments["level"])
+
+        tools.append(AITool(SET_VOLUME_TOOL, set_volume))
+
         return await self.provider.generate_response(
             messages,
-            context=context or "",
+            context=system_prompt or "",
             max_tokens=max_tokens,
             tools=tools,
             allow_web=allow_webfetch,

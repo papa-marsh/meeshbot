@@ -7,12 +7,12 @@ import pytest
 from meeshbot.config import TIMEZONE
 from meeshbot.integrations.ai import chat, client
 from meeshbot.integrations.ai.client import AIClient, ResponseLikelihood
-from meeshbot.integrations.ai.context import IMAGE_ANALYSIS_CONTEXT
+from meeshbot.integrations.ai.context import IMAGE_ANALYSIS_CONTEXT, SEND_AI_RESPONSE_CONTEXT
 from meeshbot.integrations.ai.provider import AIProvider, execute_tool
 from meeshbot.integrations.ai.providers.anthropic import AnthropicProvider
 from meeshbot.integrations.ai.providers.openai import OpenAIProvider
-from meeshbot.integrations.ai.tools import DB_QUERY_TOOL, ReminderContext
-from meeshbot.integrations.ai.types import AIMessage, AIModel, AITool
+from meeshbot.integrations.ai.tools import DB_QUERY_TOOL
+from meeshbot.integrations.ai.types import AIMessage, AIModel, AITool, Context
 from meeshbot.integrations.groupme.types import GroupMeWebhookPayload
 from tests.test_ai_providers import install_api, response_payload, text_output, tool_call
 
@@ -76,19 +76,21 @@ def test_reminder_identity_is_bound_server_side_and_database_is_not_available(
     database = AsyncMock()
     monkeypatch.setattr(client, "execute_create_reminder", reminder)
     monkeypatch.setattr(client, "execute_db_query", database)
-    identity = ReminderContext("real-group", "real-sender", "real-message")
+    identity = Context("real-group", "real-sender", "real-message")
     result = asyncio.run(
         AIClient().generate_response(
             [],
             allow_webfetch=False,
             allow_db_query=False,
-            reminder_context=identity,
+            context=identity,
         )
     )
     assert result == "Reminder created."
     reminder.assert_awaited_once_with(identity, "tomorrow", "buy milk")
     database.assert_not_awaited()
-    assert [tool["name"] for tool in requests[0]["tools"]] == ["create_reminder"]
+    tool_names = {tool["name"] for tool in requests[0]["tools"]}
+    assert "create_reminder" in tool_names
+    assert "query_database" not in tool_names
 
 
 @pytest.mark.parametrize("arguments", [None, [], {"sql": 5}, {}])
@@ -119,20 +121,37 @@ def test_history_preserves_speaker_and_local_time() -> None:
     assert bot == {"role": "assistant", "content": f"MeeshBot ({local}): hi"}
 
 
-@pytest.mark.parametrize("score, expected", [(49, False), (50, True)])
+@pytest.mark.parametrize(
+    "threshold, score, expected",
+    [
+        (50, 49, False),
+        (50, 50, True),
+        (30, 30, True),
+        (85, 84, False),
+        (85, 85, True),
+        (0, 0, True),
+        (90, 89, False),
+        (90, 90, True),
+        (82.5, 82, False),
+        (82.5, 83, True),
+    ],
+)
 def test_classifier_sees_transcript_as_evidence_and_applies_threshold(
-    monkeypatch: pytest.MonkeyPatch, score: int, expected: bool
+    monkeypatch: pytest.MonkeyPatch, threshold: float, score: int, expected: bool
 ) -> None:
     history: list[AIMessage] = [
         {"role": "assistant", "content": "MeeshBot: hi"},
         {"role": "user", "content": "Marshall: question"},
     ]
     monkeypatch.setattr(chat, "build_message_history", AsyncMock(return_value=history))
+    get_threshold = AsyncMock(return_value=threshold)
+    monkeypatch.setattr(chat, "get_response_threshold", get_threshold)
     score_call = AsyncMock(return_value=ResponseLikelihood(reason="Addressed", score=score))
     monkeypatch.setattr(client.AIClient, "score_response_likelihood", score_call)
     monkeypatch.setattr(client, "AI_PROVIDER", "anthropic")
     monkeypatch.setattr(client, "ANTHROPIC_API_KEY", "test")
     assert asyncio.run(chat.should_respond("group")) is expected
+    get_threshold.assert_awaited_once_with("group")
     prompt = score_call.call_args.kwargs["history_text"]
     assert prompt.startswith("MeeshBot: hi")
     assert prompt.endswith("--- The message you are evaluating is: ---\n\nMarshall: question")
@@ -140,10 +159,12 @@ def test_classifier_sees_transcript_as_evidence_and_applies_threshold(
 
 @pytest.mark.parametrize("public", [False, True])
 @pytest.mark.parametrize("text", ["", "hello"])
+@pytest.mark.parametrize("with_trigger", [False, True])
 def test_chat_controls_database_access_and_skips_empty_posts(
-    monkeypatch: pytest.MonkeyPatch, public: bool, text: str
+    monkeypatch: pytest.MonkeyPatch, public: bool, text: str, with_trigger: bool
 ) -> None:
     monkeypatch.setattr(chat, "build_message_history", AsyncMock(return_value=[]))
+    monkeypatch.setattr(chat, "get_volume", AsyncMock(return_value=1.5))
     monkeypatch.setattr(chat, "is_public_group", lambda _group: public)
     monkeypatch.setattr(client, "AI_PROVIDER", "anthropic")
     monkeypatch.setattr(client, "ANTHROPIC_API_KEY", "test")
@@ -151,12 +172,18 @@ def test_chat_controls_database_access_and_skips_empty_posts(
     post = AsyncMock()
     monkeypatch.setattr(client.AIClient, "generate_response", generate)
     monkeypatch.setattr(chat.GroupMeClient, "post_message", post)
-    trigger = GroupMeWebhookPayload.model_construct(id="msg", user_id="sender")
+    trigger = (
+        GroupMeWebhookPayload.model_construct(id="msg", user_id="sender", group_id="group")
+        if with_trigger
+        else None
+    )
     asyncio.run(chat.send_ai_response("group", trigger=trigger))
     assert generate.call_args.kwargs["allow_db_query"] is not public
-    assert generate.call_args.kwargs["reminder_context"] == ReminderContext(
-        "group", "sender", "msg"
+    assert generate.call_args.kwargs["context"] == (
+        Context("group", "sender", "msg") if with_trigger else Context("group")
     )
+    assert generate.call_args.kwargs["system_prompt"] == SEND_AI_RESPONSE_CONTEXT
+    assert "current volume is: 1.5/10" in generate.call_args.kwargs["messages"][-1]["content"]
     if text:
         post.assert_awaited_once_with(group_id="group", text=text)
     else:
@@ -181,8 +208,16 @@ def test_timestamp_sentinel_is_preserved(monkeypatch: pytest.MonkeyPatch, provid
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])
+@pytest.mark.parametrize(
+    "context",
+    [
+        Context("group"),
+        Context("group", sender_id="sender"),
+        Context("group", trigger_message_id="msg"),
+    ],
+)
 def test_reminder_creation_is_unavailable_without_trigger_context(
-    monkeypatch: pytest.MonkeyPatch, provider: str
+    monkeypatch: pytest.MonkeyPatch, provider: str, context: Context
 ) -> None:
     requests: list[dict[str, object]] = []
     adapter = install_api(
@@ -213,9 +248,14 @@ def test_reminder_creation_is_unavailable_without_trigger_context(
     monkeypatch.setattr(client, "OpenAIProvider", lambda *_args, **_kwargs: adapter)
     reminder = AsyncMock()
     monkeypatch.setattr(client, "execute_create_reminder", reminder)
-    asyncio.run(AIClient().generate_response([], allow_webfetch=False, allow_db_query=False))
+    asyncio.run(
+        AIClient().generate_response(
+            [], context=context, allow_webfetch=False, allow_db_query=False
+        )
+    )
     reminder.assert_not_awaited()
-    assert requests[0]["tools"] == []
+    assert "create_reminder" not in {tool["name"] for tool in requests[0]["tools"]}
+    assert "set_volume" in {tool["name"] for tool in requests[0]["tools"]}
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])

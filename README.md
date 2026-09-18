@@ -6,7 +6,9 @@ Built with Python 3.14, FastAPI, Postgres, APScheduler, and uv.
 
 ## Features
 
-**AI replies:** evaluates eligible incoming messages with a cheap classifier before generating a reply with a stronger model. The responder has web access, database queries in private groups, and reminder creation tied to the sender's message.
+**AI replies:** evaluates eligible incoming messages with a cheap classifier before generating a reply with a stronger model. Messages starting with `/` skip AI response evaluation, including unknown commands. The responder has web access, database queries in private groups, reminder creation tied to the sender's message, and a tool to adjust the group's volume on request.
+
+**Volume:** each group has a persistent talkativeness level from 1 (quietest) to 10 (most talkative), defaulting to 5. Any member can set it with `/volume 7`, check it with `/volume`, or ask MeeshBot to talk more or less. Decimals are supported. Volume maps to a response score cutoff of `100 - volume × 10`, not a response probability. Direct requests still pass through that cutoff; `/volume` works even while AI replies are paused.
 
 **Slash commands:** extensible command dispatch. Current commands:
 
@@ -14,6 +16,7 @@ Built with Python 3.14, FastAPI, Postgres, APScheduler, and uv.
 |---|---|
 | `/remindme <time> - <message>` | Set a reminder; time is parsed via LLM (natural language works) |
 | `/reminders` | List pending reminders |
+| `/volume [1-10]` | Show or set this group's talkativeness; decimals allowed |
 | `/scoreboard` | Message count leaderboard for the current group |
 | `/scoreboard-all` | All-time leaderboard across all groups |
 | `/roll` | Roll a dice |

@@ -8,9 +8,9 @@ A FastAPI endpoint (`POST /groupme-webhook`) receives all inbound GroupMe messag
 
 1. **Persist** — every message is synced to Postgres (group, user, and message records created or updated)
 2. **Slash command dispatch** — if the message starts with `/`, look up and execute the matching command function
-3. **AI response evaluation** — if the message isn't from MeeshBot itself, run a two-stage LLM pipeline to decide whether and how to reply. Skipped entirely (including the classifier) while the `ai_responses_paused` flag is enabled — set globally via `/timeout <how long>` and cleared via `/timeout done`.
+3. **AI response evaluation:** for non-command messages not from MeeshBot itself, run a two-stage LLM pipeline to decide whether and how to reply. Skipped entirely (including the classifier) while the `ai_responses_paused` flag is enabled, set globally via `/timeout <how long>` and cleared via `/timeout done`.
 
-This chain lives in `meeshbot/handlers/groupme.py`. Each step is independent — a slash command and an AI response can both fire on the same message.
+This chain lives in `meeshbot/handlers/groupme.py`. Every message starting with `/` skips AI response evaluation, including unknown commands. Command handlers can still use AI directly, such as timestamp parsing for reminders and timeouts.
 
 ### Data flow
 
@@ -33,13 +33,15 @@ The two-prompt pipeline in `ai/chat.py` keeps the more expensive responder off t
 1. **Classifier (`should_respond`):** selects `BASIC`, scores response likelihood, and checks the configured threshold.
 2. **Responder (`send_ai_response`):** selects the default `POWERFUL` tier and generates a reply with web access and eligible client-side tools.
 
-Prompts live in `ai/context/`, one prompt per module, re-exported through the package. History windows and the classification threshold live in `ai/chat.py`. Timestamp resolution selects `POWERFUL`.
+Prompts live in `ai/context/`, one prompt per module, re-exported through the package. History windows live in `ai/chat.py`. Timestamp resolution selects `POWERFUL`.
+
+**Volume:** `GroupMeGroup.response_threshold` persists each group's classifier cutoff, defaulting to 50 (volume 5). `utils/volume.py` shares validation and persistence for `/volume [1-10]` and the `set_volume` tool. Decimals are allowed; the mapping is `threshold = 100 - volume * 10`, with an inclusive score comparison. Any member can change it. Direct requests remain threshold-gated, and volume does not override the global pause. The responder receives the current volume and may choose a target for vague member requests. The volume tool binds `context.group_id` in its executor closure; model arguments cannot select a group. Group sync saves only GroupMe-owned fields so it cannot overwrite concurrent volume changes.
 
 **Tools and continuation:** Client-side tool definitions and executors live in `ai/tools/`. `AIClient` binds them into `AITool` objects, including trusted context in executor closures. Providers dispatch only through the supplied tool list. Unknown/unavailable tools, malformed inputs, and executor failures produce error results for the model. Database queries are unavailable in public groups; `AI_DATABASE_URL` must use a read-only Postgres role. Tool loops have no application iteration cap.
 
 Anthropic replays complete assistant content and appends tool results, including continuation after server-tool `pause_turn`. Its native web search/fetch tools use direct invocation for Haiku. OpenAI uses the Responses API with `store=False`, replays all native output items including encrypted reasoning, and matches function results by `call_id`. Its native web search can open pages; citation URLs are rendered inline in GroupMe text. Neither provider relies on a stored remote conversation.
 
-**Tool identity and trust:** `create_reminder` takes only a natural-language time and message from the model. Group, sender, and reply-target IDs come from a `ReminderContext` built from the triggering webhook (`handler → send_ai_response(trigger=webhook) → generate_response(reminder_context=...)`). The tool is unavailable without that context. Both AI and slash-command reminders share timestamp resolution, future validation, and persistence in `utils/reminders.py`. Resolving an AI-created reminder invokes a separate `POWERFUL` AI call through that shared core.
+**Tool identity and trust:** `AIClient.generate_response` requires `context: Context` from `ai/types.py`; prompt text is passed separately as `system_prompt`. Context carries a required group ID and optional sender and triggering-message IDs. `send_ai_response` builds it from the group and webhook; CLI calls without a webhook carry only the group ID. `create_reminder` is available only when both sender and triggering-message IDs are present, and takes only a natural-language time and message from the model. Both AI and slash-command reminders share timestamp resolution, future validation, and persistence in `utils/reminders.py`. Resolving an AI-created reminder invokes a separate `POWERFUL` AI call through that shared core.
 
 **History framing:** `AIClient.build_message_history_entry` emits provider-neutral `AIMessage` values. Human messages have the `user` role, and messages named `MeeshBot` have the `assistant` role. Both carry a `"Sender Name (timestamp): text"` prefix. The responder receives these role-tagged messages as a participant. The classifier receives a single user text block as evidence, with the final message explicitly marked. Preserve this distinction when adding AI features.
 
@@ -101,7 +103,7 @@ Two decorators are available in `registry.py`: `admin_only` (gates on `ADMIN_USE
 - New system prompts belong in their own modules in `integrations/ai/context/`.
 - New structured-output features belong on `AIClient`, with a Pydantic output model and a call to `provider.generate_structured`. Keep SDK types inside concrete providers.
 - History fetching, prompt assembly, and output dispatch belong in `ai/chat.py`.
-- New client-side tools need a `ToolDefinition` and async executor in `ai/tools/`, then an `AITool` binding in `AIClient.generate_response`. The shared schema supports required string parameters. Bind identity server-side, following `ReminderContext`; never take trusted IDs from model arguments. Both providers dispatch generically, so adding a client-side tool does not require editing their loops.
+- New client-side tools need a `ToolDefinition` and async executor in `ai/tools/`, then an `AITool` binding in `AIClient.generate_response`. The shared schema supports required string parameters. Bind identity server-side using `Context`; never take trusted IDs from model arguments. Both providers dispatch generically, so adding a client-side tool does not require editing their loops.
 - New providers implement `AIProvider`, map every `AIModel` tier, and are wired into `AIClient` selection. Native web tools and their limits stay provider-specific.
 
 ### Adding a scheduled job

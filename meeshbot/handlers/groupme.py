@@ -7,13 +7,17 @@ from meeshbot.utils.flags import FlagKey, flag_enabled
 
 async def handle_groupme_webhook(webhook: GroupMeWebhookPayload) -> None:
     await sync_message_to_db(webhook)
-    await _handle_slash_command(webhook)
-    await _handle_ai_response(webhook)
+
+    if webhook.text and webhook.text[0] == "/":
+        await _handle_slash_command(webhook)
+
+    if webhook.text and not webhook.text.startswith("/") and webhook.name != "MeeshBot":
+        await _handle_ai_response(webhook)
 
 
 async def _handle_slash_command(webhook: GroupMeWebhookPayload) -> None:
-    if not webhook.text or webhook.text[0] != "/":
-        return
+    if not webhook.text:
+        raise ValueError
 
     message_parts = webhook.text.split(" ")
     command = message_parts[0]
@@ -23,9 +27,6 @@ async def _handle_slash_command(webhook: GroupMeWebhookPayload) -> None:
 
 
 async def _handle_ai_response(webhook: GroupMeWebhookPayload) -> None:
-    if not webhook.text or webhook.name == "MeeshBot":
-        return
-
     if await flag_enabled(FlagKey.AI_RESPONSES_PAUSED):
         return
 

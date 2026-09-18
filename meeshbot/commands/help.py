@@ -15,6 +15,8 @@ HELP_MESSAGE = """Command List:
 
 /timeout done: Resume AI replies.
 
+/volume [1-10]: Show or set how often MeeshBot responds in this group.
+
 /scoreboard: Message count leaderboard"""
 
 

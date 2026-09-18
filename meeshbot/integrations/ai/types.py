@@ -16,6 +16,13 @@ class AIMessage(TypedDict):
     content: str
 
 
+@dataclass(frozen=True)
+class Context:
+    group_id: str
+    sender_id: str | None = None
+    trigger_message_id: str | None = None
+
+
 class ToolParameter(TypedDict):
     type: Literal["string"]
     description: str
