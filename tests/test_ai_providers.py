@@ -9,6 +9,7 @@ import pytest
 from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from pydantic import BaseModel
+from structlog.testing import capture_logs
 
 from meeshbot.integrations.ai.provider import AIProvider
 from meeshbot.integrations.ai.providers import anthropic, openai
@@ -281,7 +282,45 @@ def test_anthropic_resumes_server_tool_pause(monkeypatch: pytest.MonkeyPatch) ->
     assert all(tool["allowed_callers"] == ["direct"] for tool in requests[0]["tools"])
 
 
-def test_openai_renders_citation_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("text", "markers", "expected"),
+    [
+        (
+            "$8.7M divided by 82 is about $106k a game. Expensive little tantrum. ([puckpedia.com](https://puckpedia.com/team/Detroit-Red-Wings?utm_source=openai))",
+            ["[puckpedia.com](https://puckpedia.com/team/Detroit-Red-Wings?utm_source=openai)"],
+            "$8.7M divided by 82 is about $106k a game. Expensive little tantrum.",
+        ),
+        ("Starts at 8. 【source】 See you there.", ["【source】"], "Starts at 8. See you there."),
+        (
+            "Starts at 8 【one】. Ends at 10 【two】.",
+            ["【one】", "【two】"],
+            "Starts at 8. Ends at 10.",
+        ),
+        (
+            "🏒 Starts at 8. ([source](https://example.com))",
+            ["[source](https://example.com)"],
+            "🏒 Starts at 8.",
+        ),
+        (
+            "Visit [schedule](https://example.com) or https://example.org.",
+            [],
+            "Visit [schedule](https://example.com) or https://example.org.",
+        ),
+    ],
+)
+def test_openai_keeps_citations_in_logs_only(
+    monkeypatch: pytest.MonkeyPatch, text: str, markers: list[str], expected: str
+) -> None:
+    citations = [
+        {
+            "type": "url_citation",
+            "start_index": text.index(marker),
+            "end_index": text.index(marker) + len(marker),
+            "url": "https://example.com/schedule",
+            "title": "Schedule",
+        }
+        for marker in markers
+    ]
     output = {
         "id": "msg_cited",
         "type": "message",
@@ -290,30 +329,47 @@ def test_openai_renders_citation_urls(monkeypatch: pytest.MonkeyPatch) -> None:
         "content": [
             {
                 "type": "output_text",
-                "text": "The game starts at 8.",
-                "annotations": [
-                    {
-                        "type": "url_citation",
-                        "start_index": 0,
-                        "end_index": 21,
-                        "url": "https://example.com/schedule",
-                        "title": "Schedule",
-                    }
-                ],
+                "text": text,
+                "annotations": citations,
             }
         ],
     }
     adapter = install_api(monkeypatch, "openai", [response_payload("openai", [output])], [])
-    result = asyncio.run(
-        adapter.generate_response(
-            [{"role": "user", "content": "Game time?"}],
-            context="",
-            max_tokens=2048,
-            tools=[],
-            allow_web=True,
+    with capture_logs() as logs:
+        result = asyncio.run(
+            adapter.generate_response(
+                [{"role": "user", "content": "Game time?"}],
+                context="",
+                max_tokens=2048,
+                tools=[],
+                allow_web=True,
+            )
         )
-    )
-    assert result == "The game starts at 8. (https://example.com/schedule)"
+    assert result == expected
+    event = next(event for event in logs if event["event"] == "AI response received")
+    assert event["text"] == text
+    assert event["citations"] == citations
+
+
+def test_anthropic_keeps_citation_metadata_in_logs_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    citation = {
+        "type": "web_search_result_location",
+        "cited_text": "Starts at 8.",
+        "url": "https://example.com/schedule",
+        "title": "Schedule",
+        "encrypted_index": "encrypted",
+    }
+    text = "Starts at 8. Visit https://example.org for tickets."
+    output = {"type": "text", "text": text, "citations": [citation]}
+    adapter = install_api(monkeypatch, "anthropic", [response_payload("anthropic", [output])], [])
+    with capture_logs() as logs:
+        result = asyncio.run(
+            adapter.generate_response([], context="", max_tokens=2048, tools=[], allow_web=True)
+        )
+    assert result == text
+    event = next(event for event in logs if event["event"] == "AI response received")
+    assert event["text"] == text
+    assert event["citations"] == [citation]
 
 
 def test_openai_incomplete_response_does_not_execute_tools(monkeypatch: pytest.MonkeyPatch) -> None:

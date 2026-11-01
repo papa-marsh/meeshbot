@@ -34,11 +34,15 @@ def _response_text(response: Response) -> str:
             text = content.text
             citations = [a for a in content.annotations if a.type == "url_citation"]
             for citation in sorted(citations, key=lambda a: a.end_index, reverse=True):
-                text = (
-                    text[: citation.end_index] + f" ({citation.url})" + text[citation.end_index :]
-                )
+                start, end = citation.start_index, citation.end_index
+                if not 0 <= start < end <= len(text):
+                    continue
+                if text[start - 1 : start] == "(" and text[end : end + 1] == ")":
+                    start -= 1
+                    end += 1
+                text = text[:start].rstrip(" \t") + text[end:]
             parts.append(text)
-    return "".join(parts)
+    return "".join(parts).strip()
 
 
 class OpenAIProvider:
@@ -100,6 +104,15 @@ class OpenAIProvider:
                     model=self.model,
                     status=response.status,
                     text=response.output_text or None,
+                    citations=[
+                        annotation.model_dump()
+                        for item in response.output
+                        if item.type == "message"
+                        for content in item.content
+                        if content.type == "output_text"
+                        for annotation in content.annotations
+                        if annotation.type == "url_citation"
+                    ],
                 )
                 if response.status != "completed" or response.error is not None:
                     raise ValueError(f"OpenAI response did not complete: {response.status}")
