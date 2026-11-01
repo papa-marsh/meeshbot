@@ -94,6 +94,12 @@ class AnthropicProvider:
                     model=self.model,
                     stop_reason=response.stop_reason,
                     text=text or None,
+                    citations=[
+                        citation.model_dump()
+                        for block in response.content
+                        if block.type == "text"
+                        for citation in block.citations or []
+                    ],
                 )
                 if response.stop_reason == "pause_turn":
                     conversation.append({"role": "assistant", "content": response.content})

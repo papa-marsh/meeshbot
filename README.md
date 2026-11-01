@@ -33,7 +33,7 @@ Set `AI_PROVIDER=anthropic` (the default) with `ANTHROPIC_API_KEY`, or `AI_PROVI
 
 Application code chooses `AIModel.CHEAP`, `BASIC`, `POWERFUL`, or `FRONTIER`. Providers map these to Haiku/Luna, Sonnet/Terra, Opus/Sol, and Fable/Astra respectively. Image descriptions use `CHEAP`, classification uses `BASIC`, replies default to `POWERFUL`, and time parsing uses `POWERFUL`. API model IDs live in `meeshbot/integrations/ai/providers/`.
 
-Anthropic provides native web search and fetch; OpenAI uses native web search with page-opening support and inline citation URLs. Frontier models require reasoning and use a larger output budget allowance.
+Anthropic provides native web search and fetch; OpenAI uses native web search with page-opening support. Provider citations are kept in logs, omitted from outgoing replies, and therefore absent from newly synced conversation history. Ordinary links remain in replies. Frontier models require reasoning and use a larger output budget allowance.
 
 ## Running
 
